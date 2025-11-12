@@ -2,8 +2,9 @@
 
 Chuyển đổi mindmap từ Miro thành graph structure phục vụ thiết kế kịch bản chatbot.
 
-## Tính năng
+## 🌟 Tính năng
 
+- ✅ **Web UI** - Giao diện web đơn giản cho Product team (không cần code!)
 - ✅ Kết nối Miro API để lấy dữ liệu mindmap
 - ✅ Parse cấu trúc mindmap (nodes và connections)
 - ✅ Chuyển đổi sang NetworkX graph
@@ -12,6 +13,52 @@ Chuyển đổi mindmap từ Miro thành graph structure phục vụ thiết k�
   - **Intent Tree**: Cây phân cấp intents
   - **Scenario Paths**: Các kịch bản hội thoại hoàn chỉnh
 - ✅ Export graph sang GraphML/GEXF để visualize
+- ✅ Demo data (test ngay không cần Miro API)
+- ✅ Docker support - Deploy dễ dàng
+
+## 🚀 Quick Start
+
+### Option 1: Web UI (Khuyến nghị cho Product Team)
+
+```bash
+# Clone và chạy
+git clone https://github.com/yourusername/mindmap2graph.git
+cd mindmap2graph
+chmod +x run.sh
+./run.sh
+# Chọn option 1 (Web UI)
+```
+
+Web sẽ mở tại: http://localhost:8501
+
+**Features Web UI:**
+- ✅ Upload JSON hoặc dùng demo data
+- ✅ Connect với Miro API
+- ✅ Xem preview graph statistics
+- ✅ Export và download JSON ngay trên web
+- ✅ Không cần code!
+
+👉 **Xem thêm**: [PRODUCT_TEAM_GUIDE.md](PRODUCT_TEAM_GUIDE.md) - Hướng dẫn cho Product team
+
+### Option 2: Command Line (Cho Developers)
+
+```bash
+# Setup
+pip install -r requirements.txt
+cp .env.example .env
+# Edit .env với token
+
+# Run
+python main.py --format all
+```
+
+### Option 3: Docker
+
+```bash
+docker-compose up
+```
+
+👉 **Xem thêm**: [DEPLOY.md](DEPLOY.md) - Hướng dẫn deploy lên cloud
 
 ## Cài đặt
 
@@ -56,7 +103,29 @@ MIRO_BOARD_ID=your_board_id_here
 
 ## Sử dụng
 
-### Cách 1: Sử dụng Main Script
+### Cách 1: Web UI (Dễ nhất - Cho Product Team)
+
+```bash
+streamlit run app.py
+```
+
+Hoặc dùng script tự động:
+```bash
+./run.sh
+# Chọn option 1
+```
+
+**Trong Web UI:**
+1. Chọn phương thức: Upload JSON hoặc Connect Miro API
+2. Load data (hoặc dùng demo data)
+3. Xem preview statistics
+4. Chọn format export
+5. Click "Generate & Download"
+6. Done!
+
+👉 **Chi tiết**: [PRODUCT_TEAM_GUIDE.md](PRODUCT_TEAM_GUIDE.md)
+
+### Cách 2: Command Line (Cho Developers)
 
 ```bash
 # Export tất cả formats
@@ -77,7 +146,7 @@ python main.py --board-id uXjVKbzXYZ0=
 python main.py --output-dir my_output
 ```
 
-### Cách 2: Sử dụng Python Code
+### Cách 3: Python Code
 
 ```python
 from src import MiroClient, MindmapParser, GraphConverter, ChatbotExporter
@@ -421,6 +490,38 @@ plt.savefig("graph.png")
 
 MIT License
 
+## 📚 Documentation
+
+- **[README.md](README.md)** - Bạn đang đọc file này
+- **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide
+- **[PRODUCT_TEAM_GUIDE.md](PRODUCT_TEAM_GUIDE.md)** - Hướng dẫn cho Product team (không cần code)
+- **[MIRO_SETUP.md](MIRO_SETUP.md)** - Chi tiết setup Miro API
+- **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture
+- **[DEPLOY.md](DEPLOY.md)** - Deployment guide (Docker, Cloud, etc.)
+
+## 🐳 Deployment
+
+### Local
+
+```bash
+./run.sh
+```
+
+### Docker
+
+```bash
+docker-compose up
+```
+
+### Cloud (Streamlit Cloud - Free!)
+
+1. Push code lên GitHub
+2. Go to https://streamlit.io/cloud
+3. Connect repo và deploy
+4. Done! Có URL public cho cả team dùng
+
+👉 **Chi tiết**: [DEPLOY.md](DEPLOY.md)
+
 ## Đóng góp
 
 Contributions are welcome! Please feel free to submit a Pull Request.
@@ -433,3 +534,4 @@ Tạo cho use case: Chuyển đổi Miro mindmap sang graph structure phục v�
 
 - Issues: [GitHub Issues](https://github.com/yourusername/mindmap2graph/issues)
 - Miro API Docs: https://developers.miro.com/docs
+- Streamlit Docs: https://docs.streamlit.io
