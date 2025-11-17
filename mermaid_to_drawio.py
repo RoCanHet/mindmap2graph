@@ -4,7 +4,7 @@ import logging
 import sys
 from pathlib import Path
 
-from src import MermaidParser, MindmapParser, GraphConverter, DrawIOExporter
+from src import MermaidParser, GraphConverter, DrawIOExporter
 
 logging.basicConfig(
     level=logging.INFO,
@@ -64,14 +64,38 @@ def main():
         logger.error(f"✗ Failed to parse Mermaid: {e}")
         sys.exit(1)
 
-    # Step 2: Convert to graph structure
-    logger.info("\n[2/4] Converting to graph structure...")
+    # Step 2: Extract nodes and edges from parsed data
+    logger.info("\n[2/4] Extracting graph structure...")
     try:
-        parser = MindmapParser()
-        nodes, edges = parser.parse(graph_data)
-        logger.info(f"✓ Parsed {len(nodes)} nodes and {len(edges)} edges")
+        # MermaidParser already provides items and connectors
+        # We need to convert them to the format expected by GraphConverter
+        from src.mermaid_parser import Node, Edge
+
+        nodes = {}
+        for item in graph_data['items']:
+            node_id = item['id']
+            nodes[node_id] = Node(
+                node_id=node_id,
+                content=item['data']['content'],
+                node_type=item['type'],
+                position=tuple(item['position'].values()) if item['position']['x'] != 0 else None,
+                metadata={}
+            )
+
+        edges = []
+        for idx, conn in enumerate(graph_data['connectors']):
+            label = conn.get('captions', [{}])[0].get('content', '') if 'captions' in conn else ''
+            edges.append(Edge(
+                edge_id=conn['id'],
+                source_id=conn['startItem']['id'],
+                target_id=conn['endItem']['id'],
+                label=label,
+                metadata={}
+            ))
+
+        logger.info(f"✓ Extracted {len(nodes)} nodes and {len(edges)} edges")
     except Exception as e:
-        logger.error(f"✗ Failed to parse graph: {e}")
+        logger.error(f"✗ Failed to extract graph: {e}")
         sys.exit(1)
 
     # Step 3: Build NetworkX graph

@@ -1,188 +1,170 @@
-# Graph to draw.io XML Converter
+# Mermaid Flowchart to draw.io XML Converter
 
-Convert graph data (nodes and edges) to draw.io XML format for visualization.
+Convert Mermaid flowchart files to draw.io XML format for visualization.
 
 ## 🎯 What it does
 
-Takes JSON data with graph structure → Converts to draw.io XML → Import vào draw.io để visualize
+Mermaid flowchart (text-based diagram) → draw.io XML → Beautiful editable diagrams
 
 ## 🚀 Quick Start
 
-### Install
-
 ```bash
-pip install -r requirements.txt
-```
+# Install
+pip install networkx
 
-### Usage
+# Convert OTS file to draw.io XML
+python mermaid_to_drawio.py OTS -o output/flowchart.xml
 
-```bash
-# Convert JSON file to draw.io XML
-python convert_to_drawio.py input.json -o output.xml
-
-# Then import output.xml into draw.io
+# Import to draw.io
+# 1. Open https://app.diagrams.net
+# 2. File → Open from → Device
+# 3. Select flowchart.xml
+# 4. Arrange → Layout → Vertical Flow
 ```
 
 ## 📖 Input Format
 
-Your JSON file should have this structure:
+Your Mermaid file should use flowchart syntax:
 
-```json
-{
-  "items": [
-    {
-      "id": "node_1",
-      "type": "sticky_note",
-      "data": {"content": "Node text"},
-      "position": {"x": 0, "y": 0}
-    },
-    {
-      "id": "node_2",
-      "type": "card",
-      "data": {"title": "Another node"},
-      "position": {"x": 200, "y": 100}
-    }
-  ],
-  "connectors": [
-    {
-      "id": "edge_1",
-      "startItem": {"id": "node_1"},
-      "endItem": {"id": "node_2"},
-      "captions": [{"content": "Edge label"}]
-    }
-  ]
-}
+```mermaid
+flowchart TD
+    Start([Begin]) --> Process1[Step 1]
+    Process1 --> Decision{Check?}
+    Decision -->|Yes| Process2[Step 2]
+    Decision -->|No| End([End])
+    Process2 --> End
 ```
 
-### Node Types & Colors
+Supported shapes:
+- `[]` → 🟦 Rectangle (card)
+- `()` → 🟨 Rounded (sticky_note)
+- `{}` → 🟩 Diamond (shape)
 
-- **sticky_note** → 🟨 Yellow (#fff2cc)
-- **card** → 🟦 Blue (#dae8fc)
-- **shape** → 🟩 Green (#d5e8d4)
-- **unknown** → ⬜ Gray (#f5f5f5)
+## 📝 Example: OTS File
 
-## 📝 Example
+The included `OTS` file is a 649-line Mermaid flowchart for an exam management system with:
+- 200+ nodes (process steps)
+- 300+ edges (transitions)
+- Multiple decision points and workflows
 
-See `examples/export_drawio.py` for a complete example with demo data:
-
+Convert it:
 ```bash
-python examples/export_drawio.py
+python mermaid_to_drawio.py OTS
+# Output: output/flowchart.xml
 ```
-
-This will create `output/chatbot_graph_drawio.xml`
 
 ## 🎨 Import to draw.io
 
-1. Open https://app.diagrams.net
-2. **File** → **Open from** → **Device**
-3. Select your `.xml` file
-4. Graph displays with colored nodes and arrows
-5. Edit, rearrange, export to PNG/PDF/SVG
-
-**Tip**: Use **Arrange** → **Layout** → **Horizontal Flow** to auto-arrange nodes
-
-## 🔧 Advanced Usage
-
-### Python API
-
-```python
-from src import MindmapParser, GraphConverter, DrawIOExporter
-import json
-
-# Load your data
-with open('input.json') as f:
-    data = json.load(f)
-
-# Parse
-parser = MindmapParser()
-nodes, edges = parser.parse(data)
-
-# Convert to graph
-converter = GraphConverter(directed=True)
-graph = converter.convert(nodes, edges)
-
-# Export to draw.io XML
-exporter = DrawIOExporter(graph)
-exporter.save_to_file('output.xml')
-```
-
-### Customize Node Colors
-
-Edit `src/drawio_exporter.py`:
-
-```python
-def _get_node_color(self, node_type: str) -> tuple:
-    color_map = {
-        "my_type": ("#custom_fill", "#custom_stroke"),
-    }
-    return color_map.get(node_type, ("#ffffff", "#000000"))
-```
-
-## 📚 Documentation
-
-- **[README.md](README.md)** - This file
-- **[DRAWIO_GUIDE.md](DRAWIO_GUIDE.md)** - Complete draw.io usage guide
+1. **Open draw.io**: https://app.diagrams.net
+2. **Import XML**:
+   - File → Open from → Device
+   - Select the generated `.xml` file
+3. **Auto-arrange** (recommended):
+   - Select All (Ctrl+A)
+   - Arrange → Layout → Vertical/Horizontal Flow
+4. **Edit & Export**:
+   - Change colors, resize nodes
+   - Export to PNG/PDF/SVG
 
 ## 🛠️ Code Structure
 
 ```
 .
-├── convert_to_drawio.py       # Main converter script
+├── mermaid_to_drawio.py       # Main converter script
+├── OTS                        # Example: Mermaid flowchart
 ├── src/
-│   ├── mindmap_parser.py      # Parse JSON to nodes/edges
+│   ├── mermaid_parser.py      # Parse Mermaid syntax
 │   ├── graph_converter.py     # Convert to NetworkX graph
 │   └── drawio_exporter.py     # Export to draw.io XML
-└── examples/
-    └── export_drawio.py       # Example with demo data
+└── output/
+    └── flowchart.xml          # Generated XML
 ```
 
 ## ⚙️ How it works
 
 ```
-JSON Input
+Mermaid File (OTS)
    ↓
-Parse nodes & edges (MindmapParser)
+Parse nodes & edges (MermaidParser)
    ↓
-Create NetworkX graph (GraphConverter)
+Build NetworkX graph (GraphConverter)
    ↓
 Generate draw.io XML (DrawIOExporter)
    ↓
 XML Output
 ```
 
+## 🔧 Advanced Usage
+
+### Custom input/output
+
+```bash
+# Convert any Mermaid file
+python mermaid_to_drawio.py my_diagram.mmd -o my_output.xml
+```
+
+### Python API
+
+```python
+from src import MermaidParser, GraphConverter, DrawIOExporter
+
+# Parse Mermaid file
+parser = MermaidParser()
+graph_data = parser.parse_file('OTS')
+
+# Build graph
+converter = GraphConverter(directed=True)
+# ... (convert nodes/edges)
+graph = converter.convert(nodes, edges)
+
+# Export
+exporter = DrawIOExporter(graph)
+exporter.save_to_file('output.xml')
+```
+
 ## 🎨 draw.io Features
 
-The generated XML includes:
-
-- ✅ Nodes with proper positioning
-- ✅ Color-coded by type
-- ✅ Edge labels
+Generated XML includes:
+- ✅ Color-coded nodes by shape type
+- ✅ Edge labels from Mermaid
 - ✅ Orthogonal connectors
-- ✅ Proper sizing based on content
+- ✅ Proper node sizing
 - ✅ Compatible with draw.io online & desktop
 
 ## 🐛 Troubleshooting
 
-### File won't import to draw.io
+### Parser errors
 
-- Check XML is valid: `cat output.xml`
+If parsing fails, check:
+- Mermaid syntax is valid
+- All nodes are defined before use
+- Edge syntax uses `-->`
+
+### Import issues
+
 - Try different browser (Chrome recommended)
 - Use draw.io desktop app
+- Check XML is valid: `cat output.xml`
 
-### Nodes overlap
+### Layout issues
 
-- Use draw.io's **Arrange** → **Layout**
-- Manually drag to reposition
-
-### Missing labels
-
-- Check your input JSON has `captions` in connectors
-- Labels might be hidden if too long
+- Use draw.io's auto-layout: Arrange → Layout
+- Manually adjust node positions
+- Try different layout algorithms
 
 ## 📦 Requirements
 
 - Python 3.8+
 - networkx (for graph operations)
+
+```bash
+pip install networkx
+```
+
+## 📚 Documentation
+
+- **[README.md](README.md)** - This file
+- **[DRAWIO_GUIDE.md](DRAWIO_GUIDE.md)** - Complete draw.io usage guide
 
 ## 🤝 Contributing
 

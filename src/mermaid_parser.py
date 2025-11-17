@@ -1,6 +1,60 @@
 """Parse Mermaid flowchart to graph structure."""
 import re
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Optional
+
+
+class Node:
+    """Represents a node in the graph."""
+
+    def __init__(
+        self,
+        node_id: str,
+        content: str,
+        node_type: str,
+        position: Optional[Tuple[float, float]] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
+        self.id = node_id
+        self.content = content
+        self.type = node_type
+        self.position = position
+        self.metadata = metadata or {}
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "content": self.content,
+            "type": self.type,
+            "position": self.position,
+            "metadata": self.metadata,
+        }
+
+
+class Edge:
+    """Represents an edge between nodes."""
+
+    def __init__(
+        self,
+        edge_id: str,
+        source_id: str,
+        target_id: str,
+        label: Optional[str] = None,
+        metadata: Optional[Dict[str, Any]] = None,
+    ):
+        self.id = edge_id
+        self.source = source_id
+        self.target = target_id
+        self.label = label
+        self.metadata = metadata or {}
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "source": self.source,
+            "target": self.target,
+            "label": self.label,
+            "metadata": self.metadata,
+        }
 
 
 class MermaidParser:
