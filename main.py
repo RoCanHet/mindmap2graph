@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 from config import get_settings
-from src import MiroClient, MindmapParser, GraphConverter, ChatbotExporter
+from src import MiroClient, MindmapParser, GraphConverter, ChatbotExporter, DrawIOExporter
 
 logging.basicConfig(
     level=logging.INFO,
@@ -41,6 +41,11 @@ def main():
         "--export-graph",
         action="store_true",
         help="Also export graph in GraphML format",
+    )
+    parser.add_argument(
+        "--export-drawio",
+        action="store_true",
+        help="Also export graph in draw.io XML format",
     )
 
     args = parser.parse_args()
@@ -109,6 +114,13 @@ def main():
             graph_path = output_dir / "graph.graphml"
             converter.export_graphml(str(graph_path))
             logger.info(f"  Exported graph to {graph_path}")
+
+        # Export draw.io XML if requested
+        if args.export_drawio:
+            drawio_exporter = DrawIOExporter(graph)
+            drawio_path = output_dir / "graph_drawio.xml"
+            drawio_exporter.save_to_file(str(drawio_path))
+            logger.info(f"  Exported draw.io XML to {drawio_path}")
     except Exception as e:
         logger.error(f"✗ Failed to convert to graph: {e}")
         sys.exit(1)

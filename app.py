@@ -11,7 +11,7 @@ import io
 # Add src to path
 sys.path.insert(0, str(Path(__file__).parent))
 
-from src import MiroClient, MindmapParser, GraphConverter, ChatbotExporter
+from src import MiroClient, MindmapParser, GraphConverter, ChatbotExporter, DrawIOExporter
 
 # Page config
 st.set_page_config(
@@ -277,6 +277,57 @@ if board_data:
             col1.metric("Total States", export_summary['total_nodes'])
             col2.metric("Entry Points", export_summary['entry_points'])
             col3.metric("End Points", export_summary['end_points'])
+
+    # Draw.io XML export
+    st.markdown("---")
+    st.subheader("🎨 Export cho draw.io")
+    st.info("Export graph sang định dạng XML để import vào draw.io và visualize")
+
+    if st.button("📥 Export draw.io XML"):
+        with st.spinner("Generating draw.io XML..."):
+            drawio_exporter = DrawIOExporter(graph)
+            xml_content = drawio_exporter.export_to_drawio_xml()
+
+            # Download button
+            st.download_button(
+                label="⬇️ Download draw.io XML",
+                data=xml_content,
+                file_name="chatbot_graph_drawio.xml",
+                mime="application/xml",
+            )
+
+            st.success("✅ Draw.io XML export hoàn thành!")
+
+            # Show stats
+            stats = drawio_exporter.get_export_stats()
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Total Nodes", stats['total_nodes'])
+            col2.metric("Total Edges", stats['total_edges'])
+            col3.metric("Total Cells", stats['total_cells'])
+
+            # Show instructions
+            with st.expander("📖 Hướng dẫn import vào draw.io", expanded=True):
+                st.markdown("""
+                ### Cách import file XML vào draw.io:
+
+                1. **Mở draw.io**: Truy cập https://app.diagrams.net hoặc https://draw.io
+                2. **Import file**:
+                   - Click **File** → **Open from** → **Device**
+                   - Chọn file XML vừa download
+                   - Hoặc kéo thả file XML vào draw.io
+                3. **Xem graph**: Graph sẽ hiển thị với:
+                   - 🟨 Sticky notes (màu vàng)
+                   - 🟦 Cards (màu xanh)
+                   - 🟩 Shapes (màu xanh lá)
+                   - Mũi tên kết nối với labels
+                4. **Edit**: Bạn có thể edit, rearrange, export sang PNG/PDF/SVG
+
+                **Tip**: Dùng **Arrange** → **Layout** để auto-arrange nodes đẹp hơn!
+                """)
+
+            # Show preview
+            with st.expander("👀 Preview XML", expanded=False):
+                st.code(xml_content[:2000] + "\n...(truncated)", language="xml")
 
 # Sidebar info
 st.sidebar.markdown("---")

@@ -13,6 +13,7 @@ Chuyển đổi mindmap từ Miro thành graph structure phục vụ thiết k�
   - **Intent Tree**: Cây phân cấp intents
   - **Scenario Paths**: Các kịch bản hội thoại hoàn chỉnh
 - ✅ Export graph sang GraphML/GEXF để visualize
+- ✅ **Export sang draw.io XML** - Visualize và edit diagram đẹp mắt! 🎨
 - ✅ Demo data (test ngay không cần Miro API)
 - ✅ Docker support - Deploy dễ dàng
 
@@ -36,6 +37,7 @@ Web sẽ mở tại: http://localhost:8501
 - ✅ Connect với Miro API
 - ✅ Xem preview graph statistics
 - ✅ Export và download JSON ngay trên web
+- ✅ Export draw.io XML để visualize diagram
 - ✅ Không cần code!
 
 👉 **Xem thêm**: [PRODUCT_TEAM_GUIDE.md](PRODUCT_TEAM_GUIDE.md) - Hướng dẫn cho Product team
@@ -138,6 +140,12 @@ python main.py --format scenario_paths
 
 # Export với graph file
 python main.py --format all --export-graph
+
+# Export draw.io XML (NEW!)
+python main.py --export-drawio
+
+# Export tất cả formats + draw.io
+python main.py --format all --export-graph --export-drawio
 
 # Chỉ định board ID khác
 python main.py --board-id uXjVKbzXYZ0=
@@ -496,6 +504,7 @@ MIT License
 - **[QUICKSTART.md](QUICKSTART.md)** - Quick start guide
 - **[PRODUCT_TEAM_GUIDE.md](PRODUCT_TEAM_GUIDE.md)** - Hướng dẫn cho Product team (không cần code)
 - **[MIRO_SETUP.md](MIRO_SETUP.md)** - Chi tiết setup Miro API
+- **[DRAWIO_GUIDE.md](DRAWIO_GUIDE.md)** - 🎨 Hướng dẫn export sang draw.io (NEW!)
 - **[ARCHITECTURE.md](ARCHITECTURE.md)** - System architecture
 - **[DEPLOY.md](DEPLOY.md)** - Deployment guide (Docker, Cloud, etc.)
 
