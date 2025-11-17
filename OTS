@@ -1,0 +1,649 @@
+%%{init: {'theme':'base', 'themeVariables': {'fontSize':'14px', 'fontFamily':'Arial', 'primaryColor':'#F5F5F5', 'primaryBorderColor':'#333', 'lineColor':'#666'}}}%%
+flowchart TD
+    Start([BẮT ĐẦU CHU KỲ QUẢN LÝ KHẢO THÍ]) --> P0_Init
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% PHASE 0: ĐỒNG BỘ KẾ HOẠCH NĂM HỌC TỪ EDU
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    subgraph P0["PHASE 0: ĐỒNG BỘ & CHUẨN BỊ NỀN TẢNG"]
+        direction TB
+        
+        P0_Init["🔄 OTS tự động đồng bộ từ EDU<br/>INPUT: Kế hoạch năm học đã được HT phê duyệt tại EDU<br/>ACTOR: Hệ thống OTS"]
+        
+        P0_Init --> P0_Check{Kiểm tra tính hợp lệ<br/>dữ liệu EDU}
+        
+        P0_Check -->|Lỗi đồng bộ| P0_Error["⚠️ EDGE CASE: Lỗi đồng bộ<br/>- Không kết nối được EDU<br/>- Dữ liệu bị thiếu/sai format<br/>- Xung đột version"]
+        P0_Error --> P0_Alert["Gửi cảnh báo tới Admin OTS + IT Support<br/>Log chi tiết lỗi"]
+        P0_Alert --> P0_Manual["Admin OTS xử lý thủ công<br/>- Kiểm tra kết nối<br/>- Xác minh dữ liệu<br/>- Đồng bộ lại"]
+        P0_Manual --> P0_Init
+        
+        P0_Check -->|Hợp lệ| P0_Import["Import thành công:<br/>✓ Danh sách môn học + Credits<br/>✓ Lớp học + Số lượng SV<br/>✓ Thời khóa biểu học kỳ<br/>✓ Lịch nghỉ/Lễ/Tết<br/>✓ Timeline năm học"]
+        
+        P0_Import --> P0_Validate["Xác thực dữ liệu đã import<br/>- Kiểm tra completeness<br/>- Phát hiện duplicate<br/>- Validate constraint"]
+        
+        P0_Validate --> P0_Standards["Admin OTS cấu hình quy chuẩn<br/>INPUT: Chọn framework kiểm định<br/>OPTIONS: AUN-QA/ABET/CDIO/OBE/ISO"]
+        
+        P0_Standards --> P0_Sync_HRM["Đồng bộ dữ liệu từ HRMS<br/>✓ Danh sách giảng viên<br/>✓ Chuyên môn/Trình độ<br/>✓ Lịch công tác/Nghỉ phép<br/>✓ Tải công tác hiện tại"]
+        
+        P0_Sync_HRM --> P0_Check_HRM{Kiểm tra dữ liệu HRMS}
+        P0_Check_HRM -->|Lỗi| P0_HRM_Error["⚠️ EDGE CASE: Lỗi HRMS<br/>- GV thiếu thông tin chuyên môn<br/>- Lịch làm việc chưa cập nhật<br/>→ Notify HR bổ sung"]
+        P0_HRM_Error --> P0_Sync_HRM
+        P0_Check_HRM -->|OK| P0_Sync_Facilities
+        
+        P0_Sync_Facilities["Đồng bộ cơ sở vật chất từ EDU<br/>✓ Danh sách phòng thi<br/>✓ Sức chứa/Thiết bị<br/>✓ Trạng thái phòng<br/>✓ Lịch bảo trì"]
+        
+        P0_Sync_Facilities --> P0_Check_Facilities{Kiểm tra phòng thi}
+        P0_Check_Facilities -->|Không đủ| P0_Room_Error["⚠️ EDGE CASE: Thiếu phòng thi<br/>- Số phòng < Nhu cầu<br/>- Phòng không đủ tiêu chuẩn<br/>→ Báo cáo PDT"]
+        P0_Room_Error --> P0_Room_Plan["PDT lập phương án:<br/>- Thuê phòng ngoài<br/>- Chia ca thi<br/>- Điều chỉnh lịch"]
+        P0_Room_Plan --> P0_Sync_Facilities
+        
+        P0_Check_Facilities -->|Đủ| P0_Timeline["OTS tự động tạo Timeline Khảo thí<br/>dựa trên kế hoạch EDU:<br/>✓ Deadline tạo ngân hàng câu hỏi<br/>✓ Deadline tạo đề thi<br/>✓ Thời gian duyệt đề (3 cấp)<br/>✓ Thời gian lập lịch thi<br/>✓ Kỳ thi chính thức<br/>✓ Công bố điểm<br/>✓ Thời gian phúc khảo<br/>✓ Kỳ thi lại"]
+        
+        P0_Timeline --> P0_AI_Check["AI phân tích xung đột Timeline<br/>- So sánh với lịch học EDU<br/>- Phát hiện overlap<br/>- Tính toán buffer time<br/>- Đề xuất điều chỉnh"]
+        
+        P0_AI_Check --> P0_Conflict{Phát hiện<br/>xung đột?}
+        P0_Conflict -->|Có| P0_Resolve["⚠️ EDGE CASE: Xung đột lịch<br/>- Trùng lịch học - lịch thi<br/>- Deadline không đủ buffer<br/>- Quá tải GV/GT/Phòng"]
+        P0_Resolve --> P0_Suggest["AI đề xuất giải pháp:<br/>1. Dời lịch thi<br/>2. Tăng số ca thi<br/>3. Mở rộng pool GT<br/>4. Thuê phòng bổ sung"]
+        P0_Suggest --> P0_Admin_Review["Admin OTS review & quyết định<br/>QUYỀN: Admin OTS, PDT"]
+        P0_Admin_Review --> P0_Timeline
+        
+        P0_Conflict -->|Không| P0_Lock["🔒 KHÓA Timeline Khảo thí<br/>- Blockchain log timestamp<br/>- Version control<br/>- Digital signature Admin"]
+        
+        P0_Lock --> P0_Notify["Thông báo Timeline tới tất cả bên liên quan:<br/>→ CMS: Đăng thông báo chính thức<br/>→ Email: PDT, BM, Trưởng khoa<br/>→ Dashboard: Hiển thị countdown"]
+    end
+
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% PHASE 1: PHÂN CÔNG RA ĐỀ & BỘ MÔN DUYỆT
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    P0_Notify --> P1_Start
+    
+    subgraph P1["PHASE 1: PHÂN CÔNG RA ĐỀ THI"]
+        direction TB
+        
+        P1_Start["PDT kiểm tra Timeline<br/>ACTOR: Phòng Đào tạo<br/>INPUT: Timeline từ Phase 0"]
+        
+        P1_Start --> P1_Time_Check{Đã tới thời điểm<br/>phân công?}
+        P1_Time_Check -->|Chưa| P1_Wait["Chờ - Countdown hiển thị trên Dashboard<br/>Gửi reminder trước 7 ngày"]
+        P1_Wait --> P1_Time_Check
+        
+        P1_Time_Check -->|Đúng giờ| P1_Load_Data["Tự động load dữ liệu từ hệ sinh thái:<br/>FROM EDU: Danh sách môn thi + Lớp + SV<br/>FROM HRMS: GV available + Chuyên môn<br/>FROM LMS: Outline môn học + CLO/PLO<br/>FROM OTS: Lịch sử ra đề của GV"]
+        
+        P1_Load_Data --> P1_Data_Valid{Kiểm tra<br/>tính đầy đủ}
+        
+        P1_Data_Valid -->|Thiếu dữ liệu| P1_Missing["⚠️ EDGE CASE: Dữ liệu thiếu<br/>- EDU chưa có lớp/môn<br/>- HRMS thiếu info GV<br/>- LMS chưa cập nhật CLO"]
+        P1_Missing --> P1_Alert_Missing["Alert tới:<br/>→ PDT: Danh sách dữ liệu thiếu<br/>→ Đơn vị liên quan: Yêu cầu bổ sung<br/>→ Deadline bổ sung: 3 ngày"]
+        P1_Alert_Missing --> P1_Manual_Input["PDT nhập bổ sung thủ công<br/>hoặc chờ đơn vị cập nhật"]
+        P1_Manual_Input --> P1_Load_Data
+        
+        P1_Data_Valid -->|Đầy đủ| P1_AI_Match["AI phân tích & đề xuất phân công:<br/>LOGIC:<br/>- Matching GV - Môn (theo chuyên môn)<br/>- Cân bằng tải công việc GV<br/>- Ưu tiên GV đã dạy môn<br/>- Tránh conflict lịch GV<br/>- Kiểm tra năng lực (từ đánh giá trước)<br/>OUTPUT: Ma trận GV-Môn + Score matching"]
+        
+        P1_AI_Match --> P1_Review_BM["PDT/Trưởng khoa review đề xuất AI<br/>QUYỀN: PDT, Trưởng khoa, PGS-ĐT<br/>ACTION:<br/>- Xem chi tiết matching score<br/>- Điều chỉnh nếu cần<br/>- Thêm GV backup"]
+        
+        P1_Review_BM --> P1_Conflict_Check{Phát hiện<br/>conflict?}
+        
+        P1_Conflict_Check -->|Có| P1_Resolve_Conflict["⚠️ EDGE CASE: Xung đột phân công<br/>- GV không available (nghỉ phép/công tác)<br/>- GV quá tải (>3 môn/kỳ)<br/>- Không có GV đủ chuyên môn<br/>- GV từ chối"]
+        P1_Resolve_Conflict --> P1_Solutions["Giải pháp:<br/>1. Tìm GV thay thế từ khoa khác<br/>2. Mời GV thỉnh giảng<br/>3. Phân chia nhóm GV cùng ra đề<br/>4. Báo cáo HT xin gia hạn"]
+        P1_Solutions --> P1_Review_BM
+        
+        P1_Conflict_Check -->|Không| P1_Assign["PDT chính thức phân công:<br/>OUTPUT:<br/>- Danh sách GV + Môn phụ trách<br/>- Bộ môn phê duyệt<br/>- Deadline nộp ngân hàng câu hỏi<br/>- Deadline nộp đề thi<br/>- Số lượng đề variants (A/B/C/D)"]
+        
+        P1_Assign --> P1_BM_Assign["Gán Bộ môn duyệt cho từng môn<br/>LOGIC:<br/>- Bộ môn phụ trách môn học<br/>- Trưởng bộ môn + 2 GV senior<br/>OUTPUT: Committee duyệt đề"]
+        
+        P1_BM_Assign --> P1_Deadline_Set["Thiết lập deadline & milestones:<br/>✓ Deadline ngân hàng câu hỏi: -30 ngày<br/>✓ Deadline đề thi: -21 ngày<br/>✓ Duyệt BM: -18 ngày<br/>✓ Duyệt PKT: -15 ngày<br/>✓ Duyệt PDT: -12 ngày<br/>✓ Lập lịch: -10 ngày<br/>✓ Thi: Ngày H"]
+        
+        P1_Deadline_Set --> P1_Lock["🔒 KHÓA phân công<br/>- Blockchain log<br/>- Version 1.0<br/>- Chỉ PDT được sửa"]
+        
+        P1_Lock --> P1_Notify_All["Thông báo đa kênh:<br/>→ GV: Email + SMS + In-app notification<br/>→ Bộ môn: Dashboard + Email<br/>→ CMS: Công bố danh sách<br/>→ Calendar: Tự động tạo event + reminder<br/>CONTENT:<br/>- Môn phụ trách<br/>- Deadline chi tiết<br/>- Link hệ thống OTS<br/>- Checklist công việc"]
+        
+        P1_Notify_All --> P1_Track["Kích hoạt tracking system:<br/>- Countdown timer trên dashboard<br/>- Auto reminder: -7d, -3d, -1d, H-6h<br/>- Progress bar completion<br/>- Real-time status update"]
+        
+        P1_Track --> P1_Change_Request["⚠️ EDGE CASE: GV yêu cầu thay đổi<br/>Lý do:<br/>- Bận đột xuất<br/>- Sức khỏe<br/>- Không đủ năng lực<br/>PROCESS:<br/>→ GV gửi đơn qua OTS<br/>→ Trưởng khoa phê duyệt<br/>→ PDT tìm GV thay thế<br/>→ Update & notify"]
+        
+        P1_Change_Request --> P1_Monitor["PDT monitor tiến độ real-time<br/>Dashboard hiển thị:<br/>- Số GV đã nhận task<br/>- Số GV chưa confirm<br/>- Late risk alert<br/>- Completion rate"]
+    end
+
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% PHASE 2: TẠO NGÂN HÀNG CÂU HỎI
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    P1_Monitor --> P2_Start
+    
+    subgraph P2["PHASE 2: NGÂN HÀNG CÂU HỎI"]
+        direction TB
+        
+        P2_Start["GV truy cập module Ngân hàng Câu hỏi<br/>ACTOR: Giảng viên<br/>INPUT: Danh sách môn được phân công"]
+        
+        P2_Start --> P2_Auth["Xác thực & phân quyền<br/>SSO Login"]
+        
+        P2_Auth --> P2_Permission{Kiểm tra<br/>quyền truy cập}
+        
+        P2_Permission -->|Không có quyền| P2_403["❌ EDGE CASE: Không có quyền<br/>Lý do:<br/>- Chưa được phân công<br/>- Đã bị thu hồi quyền<br/>- Sai role trong HRMS<br/>→ Liên hệ PDT"]
+        
+        P2_Permission -->|Có quyền| P2_Dashboard["Dashboard GV hiển thị:<br/>✓ Danh sách môn phụ trách<br/>✓ Deadline từng môn<br/>✓ Trạng thái: Chưa bắt đầu/Đang làm/Hoàn thành<br/>✓ Progress: X/100 câu<br/>✓ Countdown timer<br/>✓ Lịch sử câu hỏi cũ (nếu có)"]
+        
+        P2_Dashboard --> P2_Select_Subject["GV chọn môn học để tạo câu hỏi<br/>Click vào môn → Mở workspace"]
+        
+        P2_Select_Subject --> P2_Method{Chọn phương thức<br/>tạo câu hỏi}
+        
+        %% ===== AI PATH =====
+        P2_Method -->|AI-Assisted| P2_AI_Start["Chọn: Tạo câu hỏi bằng AI<br/>QUYỀN: Tất cả GV"]
+        
+        P2_AI_Start --> P2_AI_Source{Chọn nguồn<br/>tài liệu}
+        
+        P2_AI_Source -->|Upload| P2_Upload["Upload tài liệu:<br/>- PDF/DOCX/PPT (giáo trình)<br/>- Size max: 50MB<br/>- Multi-file: Có<br/>VALIDATE:<br/>- Scan virus<br/>- Check format<br/>- Extract text"]
+        
+        P2_AI_Source -->|Sync LMS| P2_LMS_Sync["Đồng bộ từ LMS:<br/>AUTO FETCH:<br/>- Slide bài giảng<br/>- Tài liệu đọc<br/>- Video transcript<br/>- Assignment<br/>CHECK: GV có quyền truy cập LMS?"]
+        
+        P2_Upload --> P2_LMS_Check
+        P2_LMS_Sync --> P2_LMS_Check{Có tài liệu<br/>từ LMS?}
+        
+        P2_LMS_Check -->|Không| P2_LMS_Error["⚠️ EDGE CASE: Không có tài liệu LMS<br/>Lý do:<br/>- GV chưa upload lên LMS<br/>- Quyền truy cập bị từ chối<br/>- LMS đang bảo trì<br/>→ Fallback: Upload thủ công"]
+        P2_LMS_Error --> P2_Upload
+        
+        P2_LMS_Check -->|Có| P2_AI_Config["Cấu hình AI Generation:<br/>INPUT từ GV:<br/>- Số lượng câu: 100-200 (default: 150)<br/>- Phân bố Bloom:<br/>  + Remember: 20%<br/>  + Understand: 30%<br/>  + Apply: 30%<br/>  + Analyze: 15%<br/>  + Evaluate: 5%<br/>- Độ khó: Easy/Medium/Hard (30/50/20)<br/>- Ngôn ngữ: Tiếng Việt/English<br/>- CLO coverage: Auto-map từ outline"]
+        
+        P2_AI_Config --> P2_AI_Generate["AI xử lý & generate:<br/>PROCESS:<br/>1. Phân tích tài liệu (NLP)<br/>2. Extract key concepts<br/>3. Map với CLO/PLO từ outline<br/>4. Generate MCQ theo matrix<br/>5. Auto-tag: CLO, PLO, Bloom, Difficulty<br/>6. Check grammar & clarity<br/>7. Tạo đáp án + Giải thích<br/>OUTPUT: 150 câu MCQ với metadata đầy đủ<br/>TIME: ~3-5 phút"]
+        
+        P2_AI_Generate --> P2_AI_Error{Kiểm tra<br/>kết quả AI}
+        
+        P2_AI_Error -->|Lỗi| P2_AI_Fail["⚠️ EDGE CASE: AI generation fail<br/>Lý do:<br/>- Tài liệu không đủ nội dung<br/>- Format không đọc được<br/>- AI service downtime<br/>- Timeout<br/>→ Retry hoặc chuyển Manual"]
+        P2_AI_Fail --> P2_Method
+        
+        P2_AI_Error -->|Thành công| P2_AI_Preview["GV xem preview 150 câu AI tạo:<br/>DISPLAY:<br/>- Câu hỏi + 4 đáp án<br/>- Đáp án đúng (highlight)<br/>- Giải thích<br/>- Tags: CLO, PLO, Bloom, Độ khó<br/>- Distribution chart (Bloom/CLO/Difficulty)<br/>ANALYTICS:<br/>- Coverage CLO: X%<br/>- Balance Bloom taxonomy<br/>- Quality score: AI confidence"]
+        
+        P2_AI_Preview --> P2_AI_Review["GV review từng câu:<br/>ACTION:<br/>✓ Chấp nhận (Accept)<br/>✗ Loại bỏ (Reject)<br/>✎ Chỉnh sửa (Edit)<br/>FILTER:<br/>- Theo CLO/PLO<br/>- Theo Bloom level<br/>- Theo độ khó<br/>- Theo quality score"]
+        
+        P2_AI_Review --> P2_AI_Select["GV chọn 100/150 câu tốt nhất<br/>SYSTEM gợi ý:<br/>- Top 100 câu quality cao<br/>- Balance distribution<br/>- Cover hết CLO<br/>GV có thể override"]
+        
+        P2_AI_Select --> P2_AI_Edit["GV edit câu hỏi đã chọn (optional):<br/>- Sửa wording<br/>- Đổi đáp án<br/>- Thêm hình ảnh/công thức<br/>- Cập nhật giải thích<br/>AI assist real-time:<br/>- Grammar check<br/>- Duplicate detection<br/>- Suggest improvement"]
+        
+        %% ===== MANUAL PATH =====
+        P2_Method -->|Manual| P2_Manual_Start["Chọn: Nhập thủ công<br/>QUYỀN: Tất cả GV"]
+        
+        P2_Manual_Start --> P2_Manual_Form["Form nhập câu hỏi:<br/>REQUIRED FIELDS:<br/>- Nội dung câu hỏi (text/HTML)<br/>- 4 đáp án (A/B/C/D)<br/>- Đáp án đúng (single/multiple)<br/>- CLO/PLO (dropdown)<br/>- Bloom taxonomy (dropdown)<br/>- Độ khó (Easy/Medium/Hard)<br/>- Giải thích (optional)<br/>OPTIONAL:<br/>- Hình ảnh/Sơ đồ<br/>- Công thức LaTeX<br/>- Audio/Video clip"]
+        
+        P2_Manual_Form --> P2_Manual_Validate["AI Assist real-time:<br/>✓ Kiểm tra chính tả/ngữ pháp<br/>✓ Phát hiện câu trùng lặp<br/>✓ Đề xuất CLO/PLO phù hợp<br/>✓ Đánh giá độ khó tự động<br/>✓ Cảnh báo nếu thiếu field<br/>✓ Check đáp án logic"]
+        
+        P2_Manual_Validate --> P2_Manual_Save["GV lưu từng câu<br/>Status: DRAFT<br/>Có thể quay lại edit sau"]
+        
+        P2_Manual_Save --> P2_Manual_Progress{Đã đủ<br/>100 câu?}
+        P2_Manual_Progress -->|Chưa| P2_Manual_Continue["Tiếp tục nhập<br/>Progress bar: X/100"]
+        P2_Manual_Continue --> P2_Manual_Form
+        
+        %% ===== IMPORT PATH =====
+        P2_Method -->|Import Excel| P2_Import["Import từ Excel template:<br/>DOWNLOAD template chuẩn<br/>UPLOAD file đã điền<br/>VALIDATE:<br/>- Check format<br/>- Required fields<br/>- Data type<br/>- Duplicate"]
+        
+        P2_Import --> P2_Import_Valid{Kiểm tra<br/>file import}
+        P2_Import_Valid -->|Lỗi| P2_Import_Error["⚠️ EDGE CASE: Import lỗi<br/>- Sai format Excel<br/>- Thiếu cột bắt buộc<br/>- Data invalid<br/>- Duplicate câu hỏi<br/>→ Hiển thị chi tiết lỗi<br/>→ Download error report"]
+        P2_Import_Error --> P2_Import
+        P2_Import_Valid -->|OK| P2_Manual_Validate
+        
+        %% ===== COMMON VALIDATION =====
+        P2_AI_Edit --> P2_Common_Validate
+        P2_Manual_Progress -->|Đủ| P2_Common_Validate
+        
+        P2_Common_Validate["Validation tổng thể Question Bank:<br/>CHECK:<br/>✓ Số lượng: ≥100 câu<br/>✓ CLO coverage: 100%<br/>✓ Bloom distribution: Cân bằng<br/>✓ Độ khó: 30-50-20<br/>✓ Không trùng lặp<br/>✓ Tất cả có đáp án<br/>AI DEEP CHECK:<br/>- Plagiarism (so với QB năm trước)<br/>- Similarity giữa các câu<br/>- Quality score tổng thể"]
+        
+        P2_Common_Validate --> P2_Validate_Result{Pass<br/>validation?}
+        
+        P2_Validate_Result -->|Fail| P2_Validate_Error["⚠️ EDGE CASE: Validation fail<br/>Hiển thị issues:<br/>- Thiếu CLO nào<br/>- Bloom không cân bằng<br/>- Câu trùng lặp<br/>- Quality thấp<br/>→ GV sửa"]
+        P2_Validate_Error --> P2_Method
+        
+        P2_Validate_Result -->|Pass| P2_Approval_Check{Môn có yêu cầu<br/>Bộ môn duyệt?}
+        
+        P2_Approval_Check -->|Không| P2_Auto_Approve["Tự động phê duyệt<br/>Áp dụng cho:<br/>- Môn cơ sở<br/>- GV senior (>5 năm)<br/>- Quality score >90%"]
+        P2_Auto_Approve --> P2_Final_Save
+        
+        P2_Approval_Check -->|Có| P2_Submit_BM["GV submit lên Bộ môn duyệt<br/>ACTION:<br/>- Lock câu hỏi (không sửa được)<br/>- Notify Trưởng BM + Committee<br/>- Attach: Analytics report"]
+        
+        P2_Submit_BM --> P2_BM_Review["Bộ môn review Question Bank<br/>ACTOR: Trưởng BM + 2 GV senior<br/>REVIEW CHECKLIST:<br/>✓ Nội dung câu hỏi chính xác<br/>✓ Đáp án đúng logic<br/>✓ Độ khó phù hợp<br/>✓ CLO/PLO mapping đúng<br/>✓ Không vi phạm bản quyền<br/>✓ Ngôn ngữ chuẩn mực<br/>AI hỗ trợ:<br/>- Plagiarism check vs internet<br/>- So sánh với QB quốc tế<br/>- Quality benchmark"]
+        
+        P2_BM_Review --> P2_BM_Decision{Quyết định<br/>Bộ môn}
+        
+        P2_BM_Decision -->|Reject| P2_BM_Reject["Bộ môn từ chối:<br/>INPUT:<br/>- Lý do từ chối chi tiết<br/>- Comment từng câu hỏi<br/>- Đề xuất sửa<br/>OUTPUT:<br/>- Unlock Question Bank<br/>- Notify GV<br/>- Log lịch sử"]
+        P2_BM_Reject -.->|GV sửa lại| P2_Method
+        
+        P2_BM_Decision -->|Approve| P2_BM_Approve["Bộ môn phê duyệt:<br/>ACTION:<br/>- Trưởng BM ký số<br/>- Timestamp blockchain<br/>- Email confirm tới GV<br/>- Update status: APPROVED"]
+        
+        P2_BM_Approve --> P2_Late_Check{Kiểm tra<br/>deadline}
+        
+        P2_Late_Check -->|Trễ hạn| P2_Late_Warning["⚠️ EDGE CASE: Nộp trễ<br/>ACTION:<br/>- Ghi nhận trễ hạn<br/>- Alert PDT<br/>- Log vào hồ sơ GV<br/>- Có thể ảnh hưởng đánh giá KPI<br/>- Vẫn chấp nhận (nếu chưa quá deadline tuyệt đối)"]
+        
+        P2_Late_Check -->|Đúng hạn| P2_Final_Save
+        P2_Late_Warning --> P2_Final_Save
+        
+        P2_Final_Save["💾 Lưu vào Question Bank chính thức<br/>STORAGE:<br/>- Database: Câu hỏi + metadata<br/>- File system: Hình ảnh/media<br/>- Blockchain: Hash integrity<br/>- Backup: 3 bản (local/cloud/DR)<br/>STATUS: APPROVED & LOCKED<br/>VERSION: 1.0<br/>PERMISSION:<br/>- GV: Read-only<br/>- BM: Read-only<br/>- Only Admin có thể unlock khẩn cấp"]
+        
+        P2_Final_Save --> P2_Analytics["Tạo Analytics Report:<br/>- Số câu theo CLO/PLO<br/>- Distribution Bloom/Difficulty<br/>- Quality metrics<br/>- Comparison với năm trước<br/>- Benchmark với trường khác<br/>Export: PDF/Excel"]
+        
+        P2_Analytics --> P2_Notify_Complete["Thông báo hoàn thành:<br/>→ GV: Email kèm certificate<br/>→ BM: Dashboard update<br/>→ PDT: Progress tracking<br/>→ CMS: Public (nếu cần)"]
+        
+        P2_Notify_Complete --> P2_Reuse["⭐ EDGE CASE: Tái sử dụng Question Bank<br/>Học kỳ sau:<br/>- GV có thể clone QB cũ<br/>- Edit/Update câu hỏi<br/>- AI suggest: Refresh 30% câu<br/>- Re-validate & re-approve<br/>- Version 2.0"]
+    end
+
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% PHASE 3: TẠO ĐỀ THI
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    P2_Reuse --> P3_Start
+    
+    subgraph P3["PHASE 3: TẠO ĐỀ THI"]
+        direction TB
+        
+        P3_Start["GV truy cập module Tạo đề thi<br/>ACTOR: Giảng viên<br/>INPUT: Question Bank đã approved"]
+        
+        P3_Start --> P3_Check_QB{Kiểm tra<br/>Question Bank}
+        
+        P3_Check_QB -->|Chưa có QB| P3_No_QB["❌ EDGE CASE: Chưa có Question Bank<br/>- QB chưa tạo<br/>- QB chưa được duyệt<br/>→ Yêu cầu hoàn thành Phase 2 trước<br/>→ Block tạo đề"]
+        
+        P3_Check_QB -->|Có QB| P3_Load_Template["Load template đề thi theo quy chuẩn:<br/>- Header: Logo trường, tên môn, thời gian<br/>- Body: Câu hỏi + đáp án<br/>- Footer: Chữ ký, thang điểm<br/>FROM: Chuẩn AUN-QA/ABET đã chọn ở Phase 0"]
+        
+        P3_Load_Template --> P3_Matrix_Design["GV thiết kế Ma trận đề thi:<br/>ACTOR: Giảng viên<br/>INPUT FORM:<br/>1. Thông tin đề:<br/>   - Tên môn học<br/>   - Mã môn<br/>   - Số tín chỉ<br/>   - Thời gian thi: 45/60/90/120 phút<br/>   - Hình thức: Online/Offline/Hybrid<br/>   - Số câu hỏi: 30/40/50<br/>   - Điểm mỗi câu: Auto calculate<br/>2. Phân bố theo CLO:<br/>   - CLO1: X%<br/>   - CLO2: Y%<br/>   - CLO3: Z%<br/>   CHECK: Tổng = 100%<br/>3. Phân bố theo Bloom:<br/>   - Remember: ___%<br/>   - Understand: ___%<br/>   - Apply: ___%<br/>   - Analyze: ___%<br/>   - Evaluate: ___%<br/>   - Create: ___%<br/>4. Phân bố độ khó:<br/>   - Easy: 30-40%<br/>   - Medium: 40-50%<br/>   - Hard: 10-30%"]
+        
+        P3_Matrix_Design --> P3_Matrix_Validate["AI validate Ma trận:<br/>CHECK:<br/>✓ CLO coverage = 100%<br/>✓ Bloom distribution cân bằng<br/>✓ Độ khó phù hợp level môn<br/>✓ Thời gian thi đủ (1.5-2 phút/câu)<br/>✓ Tuân thủ quy chuẩn đã chọn<br/>✓ So sánh với đề năm trước<br/>COMPLIANCE CHECK:<br/>- AUN-QA: Đủ outcome mapping<br/>- ABET: Cover program outcomes<br/>- CDIO: Practice-based<br/>AI SUGGEST:<br/>- Điều chỉnh nếu mất cân bằng<br/>- Thêm/bớt câu theo CLO thiếu"]
+        
+        P3_Matrix_Validate --> P3_Matrix_Result{Ma trận<br/>hợp lệ?}
+        
+        P3_Matrix_Result -->|Không hợp lệ| P3_Matrix_Error["⚠️ EDGE CASE: Ma trận không hợp lệ<br/>Hiển thị lỗi:<br/>- CLO nào thiếu/thừa<br/>- Bloom không cân bằng<br/>- Thời gian không đủ<br/>- Vi phạm quy chuẩn nào<br/>→ GV sửa lại"]
+        P3_Matrix_Error --> P3_Matrix_Design
+        
+        P3_Matrix_Result -->|Hợp lệ| P3_Select_Method{Chọn phương thức<br/>chọn câu hỏi}
+        
+        %% ===== AI AUTO-SELECT =====
+        P3_Select_Method -->|AI Auto| P3_AI_Select["AI tự động chọn câu từ Question Bank<br/>ALGORITHM:<br/>1. Filter theo ma trận (CLO/Bloom/Difficulty)<br/>2. Ưu tiên câu quality score cao<br/>3. Tránh câu đã dùng năm trước (nếu có)<br/>4. Randomize để tạo variants<br/>5. Check không trùng lặp<br/>6. Balance distribution<br/>OUTPUT: Danh sách câu đề xuất<br/>TIME: ~10 giây"]
+        
+        P3_AI_Select --> P3_AI_Check{AI có đủ<br/>câu match?}
+        
+        P3_AI_Check -->|Thiếu| P3_AI_Shortage["⚠️ EDGE CASE: Thiếu câu hỏi<br/>Lý do:<br/>- Question Bank không đủ câu cho CLO X<br/>- Không đủ câu độ khó Hard<br/>- Không đủ câu Bloom level cao<br/>AI SUGGEST:<br/>→ Điều chỉnh ma trận<br/>→ Tạo thêm câu vào QB<br/>→ Chọn manual"]
+        P3_AI_Shortage --> P3_Select_Method
+        
+        P3_AI_Check -->|Đủ| P3_Preview_AI
+        
+        %% ===== MANUAL SELECT =====
+        P3_Select_Method -->|Manual| P3_Manual_Select["GV chọn câu thủ công từ Question Bank<br/>INTERFACE:<br/>- Filter theo CLO/PLO/Bloom/Difficulty<br/>- Search by keyword<br/>- Preview câu hỏi<br/>- Drag & drop vào đề<br/>- Counter: Đã chọn X/50 câu<br/>REALTIME CHECK:<br/>- Ma trận còn thiếu gì<br/>- Đã đủ số câu chưa<br/>- Balance warning"]
+        
+        P3_Manual_Select --> P3_Manual_Progress{Đã đủ<br/>số câu?}
+        P3_Manual_Progress -->|Chưa| P3_Manual_Continue["Tiếp tục chọn<br/>Highlight câu cần bổ sung"]
+        P3_Manual_Continue --> P3_Manual_Select
+        
+        P3_Manual_Progress -->|Đủ| P3_Preview_AI
+        
+        %% ===== PREVIEW & EDIT =====
+        P3_Preview_AI["Preview đề thi DRAFT:<br/>DISPLAY:<br/>- Đề thi format PDF/HTML<br/>- Ma trận coverage chart<br/>- Distribution analytics<br/>- Estimated completion time<br/>- Difficulty score<br/>ACTION:<br/>✎ Edit câu hỏi (thay thế)<br/>⤴️ Thay đổi thứ tự<br/>➕ Thêm câu<br/>➖ Xóa câu"]
+        
+        P3_Preview_AI --> P3_QC["AI Quality Control:<br/>CHECK:<br/>✓ Không có câu trùng lặp<br/>✓ Đáp án logic (không conflict)<br/>✓ Độ khó tổng thể cân bằng<br/>✓ Ước tính thời gian làm bài<br/>✓ Readability score<br/>✓ Không có lỗi chính tả<br/>DEEP CHECK:<br/>- Similar questions warning<br/>- Answer pattern detection<br/>- Difficulty calibration"]
+        
+        P3_QC --> P3_QC_Result{QC<br/>pass?}
+        
+        P3_QC_Result -->|Fail| P3_QC_Issues["⚠️ EDGE CASE: QC phát hiện vấn đề<br/>- Câu X và Y quá giống nhau (>80%)<br/>- Câu Z có 2 đáp án đúng<br/>- Thời gian ước tính: 95 phút (>90 phút)<br/>- Độ khó trung bình: 7.8/10 (quá khó)<br/>→ GV sửa"]
+        P3_QC_Issues --> P3_Preview_AI
+        
+        P3_QC_Result -->|Pass| P3_Variants["Tạo các đề variants (A/B/C/D):<br/>PROCESS:<br/>1. Clone đề gốc<br/>2. Shuffle thứ tự câu hỏi<br/>3. Shuffle thứ tự đáp án trong câu<br/>4. Đảm bảo variants khác nhau ≥70%<br/>5. Giữ nguyên độ khó và ma trận<br/>OUTPUT: 4 đề tương đương<br/>USE CASE: Chống gian lận thi online"]
+        
+        P3_Variants --> P3_Add_Info["Thêm thông tin đề thi:<br/>AUTO-FILL:<br/>- Học kỳ/Năm học (từ EDU)<br/>- Ngày thi (dự kiến)<br/>- Họ tên GV ra đề<br/>- Đơn vị: Khoa/Bộ môn<br/>MANUAL INPUT:<br/>- Ghi chú cho SV<br/>- Tài liệu được phép mang<br/>- Quy định làm bài<br/>- Thang điểm"]
+        
+        P3_Add_Info --> P3_Watermark["Thêm watermark & security:<br/>- Watermark: CONFIDENTIAL<br/>- QR code unique per variant<br/>- Hash integrity check<br/>- Metadata: Version, timestamp<br/>- Anti-screenshot mark (for online)"]
+        
+        P3_Watermark --> P3_Preview_Final["Preview đề thi cuối cùng:<br/>- PDF format chuẩn<br/>- 4 variants A/B/C/D<br/>- Đáp án riêng biệt<br/>- Ma trận đính kèm<br/>GV kiểm tra lần cuối"]
+        
+        P3_Preview_Final --> P3_Satisfied{GV đồng ý<br/>submit?}
+        
+        P3_Satisfied -->|Chưa| P3_Edit_More["GV edit thêm<br/>Unlock để chỉnh sửa"]
+        P3_Edit_More --> P3_Preview_AI
+        
+        P3_Satisfied -->|Đồng ý| P3_Deadline_Check{Kiểm tra<br/>deadline}
+        
+        P3_Deadline_Check -->|Trễ hạn| P3_Late["⚠️ EDGE CASE: Nộp đề trễ<br/>ACTION:<br/>- Ghi nhận vi phạm deadline<br/>- Alert PDT ngay lập tức<br/>- Email escalation tới Trưởng khoa<br/>- Log vào hồ sơ GV<br/>- Có thể ảnh hưởng KPI<br/>DECISION:<br/>- Chấp nhận nếu chưa quá hạn cứng<br/>- Từ chối nếu quá deadline tuyệt đối"]
+        
+        P3_Deadline_Check -->|Đúng hạn| P3_Submit
+        P3_Late --> P3_Late_Decision{PDT chấp nhận<br/>nộp trễ?}
+        P3_Late_Decision -->|Từ chối| P3_Rejected["Từ chối đề thi<br/>→ GV phải làm lại khẩn cấp"]
+        P3_Late_Decision -->|Chấp nhận| P3_Submit
+        
+        P3_Submit["🔒 GV Submit đề thi:<br/>ACTION:<br/>- Lock đề thi (không sửa được)<br/>- Generate submission ID<br/>- Timestamp blockchain<br/>- Hash all files<br/>- Encrypt variants<br/>- Auto backup 3 nơi<br/>STATUS: Pending BM Review<br/>NOTIFY:<br/>→ Trưởng BM: Email + Dashboard<br/>→ Committee: Task assignment<br/>→ PDT: Progress tracking"]
+        
+        P3_Submit --> P3_Confirm["Hiển thị confirmation:<br/>✅ Đề thi đã nộp thành công<br/>- Submission ID: #XXX<br/>- Timestamp: DD/MM/YYYY HH:MM<br/>- Trạng thái: Chờ duyệt BM<br/>- Ước tính duyệt: 3 ngày<br/>- Download receipt PDF"]
+        
+        P3_Confirm --> P3_Track_Status["⚠️ EDGE CASE: GV muốn sửa đề sau khi submit<br/>PROCESS:<br/>1. GV gửi yêu cầu mở khóa qua OTS<br/>2. Nêu lý do: Phát hiện lỗi/Cần cập nhật<br/>3. Trưởng BM xem xét<br/>4. Nếu approve: Unlock 24h<br/>5. GV sửa & re-submit<br/>6. Reset review process<br/>LOG: Ghi nhận mọi thay đổi"]
+    end
+
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% PHASE 4: DUYỆT ĐỀ THI - 3 CẤP
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    P3_Track_Status --> P4_Start
+    
+    subgraph P4["PHASE 4: DUYỆT ĐỀ THI - 3 CẤP"]
+        direction TB
+        
+        P4_Start["═══════════════════════════════════<br/>CẤP 1: BỘ MÔN DUYỆT ĐỀ<br/>═══════════════════════════════════"]
+        
+        P4_Start --> P4_L1_Notify["Notify Bộ môn về đề mới cần duyệt:<br/>ACTOR: Trưởng BM + 2 GV senior<br/>CHANNEL:<br/>- Email kèm link đề thi<br/>- Dashboard: Task mới<br/>- SMS: Reminder<br/>DEADLINE: 3 ngày<br/>CONTENT:<br/>- Tên môn + GV ra đề<br/>- Submission ID<br/>- Deadline duyệt<br/>- Checklist review"]
+        
+        P4_L1_Notify --> P4_L1_Access["BM truy cập đề thi cần duyệt<br/>LOGIN: SSO<br/>QUYỀN: Reviewer role"]
+        
+        P4_L1_Access --> P4_L1_Dashboard["Dashboard BM hiển thị:<br/>- Danh sách đề chờ duyệt<br/>- Ưu tiên theo deadline<br/>- Status: New/In Review/Approved/Rejected<br/>- Lịch sử duyệt<br/>- Comment thread"]
+        
+        P4_L1_Dashboard --> P4_L1_Open["BM mở đề thi để review:<br/>HIỂN THỊ:<br/>1. Thông tin đề thi<br/>2. Ma trận CLO/Bloom/Độ khó<br/>3. 4 variants (A/B/C/D)<br/>4. Đáp án chi tiết<br/>5. Analytics report<br/>6. Lịch sử (nếu re-submit)<br/>MODE: Side-by-side comparison"]
+        
+        P4_L1_Open --> P4_L1_Review["BM thực hiện review chi tiết:<br/>CHECKLIST:<br/>☐ 1. Nội dung chính xác về mặt học thuật<br/>☐ 2. Đáp án đúng và logic<br/>☐ 3. Các đáp án sai hợp lý (distractor tốt)<br/>☐ 4. Ngôn ngữ rõ ràng, không gây hiểu lầm<br/>☐ 5. Ma trận đúng với outline môn học<br/>☐ 6. CLO/PLO mapping chính xác<br/>☐ 7. Độ khó phù hợp với level môn<br/>☐ 8. Thời gian thi hợp lý<br/>☐ 9. Format đúng chuẩn<br/>☐ 10. Không vi phạm bản quyền<br/>☐ 11. Variants đủ khác biệt<br/>☐ 12. Tuân thủ quy chuẩn (AUN-QA/ABET)"]
+        
+        P4_L1_Review --> P4_L1_AI_Support["AI hỗ trợ review:<br/>REAL-TIME ANALYSIS:<br/>✓ Plagiarism check (so với internet)<br/>✓ Content accuracy (so với textbook)<br/>✓ Difficulty consistency<br/>✓ Distractor quality score<br/>✓ Language clarity index<br/>✓ Bias detection<br/>✓ Comparison với đề quốc tế<br/>HIGHLIGHT:<br/>- Câu nghi vấn (màu vàng)<br/>- Câu có vấn đề (màu đỏ)<br/>- Câu tốt (màu xanh)"]
+        
+        P4_L1_AI_Support --> P4_L1_Comment["BM comment chi tiết từng câu:<br/>INTERFACE:<br/>- Click vào câu → Mở comment box<br/>- Tag loại issue: Content/Format/Language<br/>- Severity: Critical/Major/Minor<br/>- Suggest fix<br/>- Attach reference<br/>COLLABORATE:<br/>- 3 reviewers cùng comment<br/>- Resolve discussion<br/>- Vote approve/reject"]
+        
+        P4_L1_Comment --> P4_L1_Consensus{3 reviewers<br/>đồng thuận?}
+        
+        P4_L1_Consensus -->|Không| P4_L1_Discuss["⚠️ EDGE CASE: Reviewers không đồng ý<br/>PROCESS:<br/>1. Mở discussion thread<br/>2. Trưởng BM làm moderator<br/>3. Vote lại<br/>4. Nếu vẫn không đồng thuận:<br/>   → Escalate tới PKT<br/>   → PKT quyết định"]
+        P4_L1_Discuss --> P4_L1_Consensus
+        
+        P4_L1_Consensus -->|Đồng thuận| P4_L1_Decision{Quyết định<br/>của BM}
+        
+        P4_L1_Decision -->|REJECT| P4_L1_Reject["BM từ chối đề thi:<br/>INPUT REQUIRED:<br/>- Lý do từ chối chi tiết<br/>- List tất cả issues (Critical/Major/Minor)<br/>- Comment từng câu có vấn đề<br/>- Đề xuất cách sửa<br/>- Deadline GV sửa lại: 2 ngày<br/>ACTION:<br/>- Unlock đề cho GV sửa<br/>- Send detailed feedback<br/>- Log rejection reason<br/>- Notify PDT<br/>STATUS: Returned to Teacher"]
+        
+        P4_L1_Reject --> P4_L1_Notify_GV_Reject["Notify GV về rejection:<br/>EMAIL:<br/>- Subject: Đề thi cần chỉnh sửa<br/>- Danh sách issues<br/>- Link vào hệ thống<br/>- Deadline sửa<br/>DASHBOARD:<br/>- Alert đỏ<br/>- Chi tiết comment từ BM<br/>SMS:<br/>- Nhắc nhở khẩn"]
+        
+        P4_L1_Notify_GV_Reject -.->|GV sửa lại| P3_Preview_AI
+        
+        P4_L1_Decision -->|APPROVE| P4_L1_Approve["BM phê duyệt đề thi:<br/>ACTION:<br/>- Trưởng BM ký số (Digital signature)<br/>- 2 GV senior confirm<br/>- Timestamp blockchain<br/>- Lock đề ở level BM<br/>- Update status: BM Approved<br/>- Generate certificate<br/>LOG:<br/>- Reviewer names<br/>- Approve time<br/>- Comments summary"]
+        
+        P4_L1_Approve --> P4_L1_Late{BM duyệt<br/>đúng hạn?}
+        
+        P4_L1_Late -->|Trễ| P4_L1_Late_Warning["⚠️ EDGE CASE: BM duyệt trễ<br/>ACTION:<br/>- Alert PDT về delay<br/>- Log vào báo cáo<br/>- Email reminder tới Trưởng khoa<br/>- Có thể ảnh hưởng timeline thi<br/>ESCALATION:<br/>- Nếu trễ >2 ngày: HT can thiệp"]
+        
+        P4_L1_Late -->|Đúng hạn| P4_L2_Start
+        P4_L1_Late_Warning --> P4_L2_Start
+        
+        P4_L2_Start["═══════════════════════════════════<br/>CẤP 2: PHÒNG KHẢO THÍ KIỂM ĐỊNH<br/>═══════════════════════════════════"]
+        
+        P4_L2_Start --> P4_L2_Notify["Notify PKT về đề đã duyệt BM:<br/>ACTOR: Phòng Khảo thí (PKT)<br/>REVIEWER: 2 chuyên viên PKT<br/>DEADLINE: 3 ngày<br/>SCOPE: Kiểm định format, quy trình, bảo mật"]
+        
+        P4_L2_Notify --> P4_L2_Access["PKT truy cập đề thi<br/>QUYỀN: Quality Assurance role"]
+        
+        P4_L2_Access --> P4_L2_Review["PKT kiểm định đề thi:<br/>CHECKLIST:<br/>☐ 1. FORMAT & STRUCTURE:<br/>   - Template đúng chuẩn trường<br/>   - Header/Footer đầy đủ<br/>   - Font chữ, size chuẩn<br/>   - Spacing, margin đúng<br/>   - Watermark rõ ràng<br/>☐ 2. COMPLIANCE:<br/>   - Tuân thủ quy chế thi<br/>   - Đúng quy chuẩn đã chọn (AUN-QA/ABET)<br/>   - Ma trận theo đúng outline đã duyệt<br/>   - Thời gian thi theo quy định<br/>☐ 3. SECURITY:<br/>   - Đề đã encrypt<br/>   - Variants đủ khác biệt (≥70%)<br/>   - QR code unique<br/>   - Hash integrity OK<br/>   - No metadata leak<br/>☐ 4. TECHNICAL:<br/>   - File PDF không lỗi<br/>   - Print-ready<br/>   - OCR-friendly (cho scan)<br/>   - Compatible với LMS<br/>☐ 5. SIGNATURES:<br/>   - BM đã ký đầy đủ<br/>   - Digital signature hợp lệ<br/>   - Timestamp chính xác"]
+        
+        P4_L2_Review --> P4_L2_AI_Check["AI Deep Quality Check:<br/>AUTOMATED TESTS:<br/>✓ Metadata scan<br/>✓ Hidden text detection<br/>✓ Similarity matrix 4 variants<br/>✓ Answer pattern analysis<br/>✓ Statistical difficulty<br/>✓ Readability index<br/>✓ Accessibility check (WCAG)<br/>✓ Print quality simulation<br/>SECURITY SCAN:<br/>✓ Encryption strength<br/>✓ Watermark integrity<br/>✓ Anti-copy mechanism"]
+        
+        P4_L2_AI_Check --> P4_L2_Result{Kiểm định<br/>pass?}
+        
+        P4_L2_Result -->|Fail| P4_L2_Reject["PKT từ chối:<br/>LÝ DO PHỔ BIẾN:<br/>- Format không đúng chuẩn<br/>- Thiếu chữ ký/thông tin<br/>- Variants không đủ khác biệt<br/>- Lỗi kỹ thuật file PDF<br/>- Vi phạm quy chế thi<br/>- Bảo mật không đảm bảo<br/>ACTION:<br/>- Document chi tiết issues<br/>- Screenshot minh họa<br/>- Return về GV hoặc BM (tùy lỗi)<br/>- Set deadline fix: 1 ngày"]
+        
+        P4_L2_Reject --> P4_L2_Route{Lỗi thuộc<br/>về ai?}
+        P4_L2_Route -->|GV| P4_L2_Return_GV["Return về GV sửa"]
+        P4_L2_Return_GV -.->|Fix| P3_Preview_AI
+        P4_L2_Route -->|BM| P4_L2_Return_BM["Return về BM review lại"]
+        P4_L2_Return_BM -.->|Fix| P4_L1_Open
+        
+        P4_L2_Result -->|Pass| P4_L2_Approve["PKT phê duyệt:<br/>ACTION:<br/>- 2 chuyên viên PKT ký số<br/>- Trưởng PKT final approve<br/>- Stamp: QUALITY ASSURED<br/>- Blockchain log<br/>- Lock đề ở level PKT<br/>STATUS: PKT Approved<br/>CERTIFICATE:<br/>- Compliance certificate<br/>- QA badge"]
+        
+        P4_L2_Approve --> P4_L3_Start["═══════════════════════════════════<br/>CẤP 3: PHÒNG ĐÀO TẠO PHÊ DUYỆT CUỐI<br/>═══════════════════════════════════"]
+        
+        P4_L3_Start --> P4_L3_Notify["Notify PDT về đề đã qua PKT:<br/>ACTOR: Phòng Đào tạo (PDT)<br/>REVIEWER: Trưởng PDT hoặc PGS Đào tạo<br/>DEADLINE: 2 ngày<br/>SCOPE: Phê duyệt cuối, final decision"]
+        
+        P4_L3_Notify --> P4_L3_Access["PDT truy cập đề thi<br/>QUYỀN: Final Approver"]
+        
+        P4_L3_Access --> P4_L3_Review["PDT final review:<br/>CHECKLIST:<br/>☐ 1. COMPLETENESS:<br/>   - Tất cả signatures đầy đủ<br/>   - BM approved ✓<br/>   - PKT approved ✓<br/>   - Timeline đúng hạn<br/>☐ 2. COMPLIANCE FINAL CHECK:<br/>   - Theo đúng kế hoạch năm học<br/>   - Phù hợp quy chế trường<br/>   - Tuân thủ Thông tư Bộ GD&ĐT<br/>☐ 3. STRATEGIC ALIGNMENT:<br/>   - Phù hợp chiến lược đào tạo<br/>   - Support chương trình kiểm định<br/>   - Quality benchmark OK<br/>☐ 4. RISK ASSESSMENT:<br/>   - Không có red flag<br/>   - Security đảm bảo<br/>   - Feasibility OK"]
+        
+        P4_L3_Review --> P4_L3_Dashboard["PDT xem tổng quan:<br/>DASHBOARD:<br/>- Số đề đã duyệt/tổng số<br/>- Timeline progress<br/>- Quality score average<br/>- Risk alerts<br/>- Comparison với năm trước<br/>ANALYTICS:<br/>- Đề nào chất lượng cao<br/>- GV nào xuất sắc<br/>- BM nào hiệu quả"]
+        
+        P4_L3_Dashboard --> P4_L3_Decision{PDT<br/>quyết định}
+        
+        P4_L3_Decision -->|REJECT| P4_L3_Reject["PDT từ chối (rất hiếm):<br/>LÝ DO:<br/>- Vi phạm nghiêm trọng quy chế<br/>- Phát hiện gian lận<br/>- Không phù hợp chiến lược<br/>- Rủi ro cao<br/>ACTION:<br/>- Report chi tiết tới HT<br/>- Họp khẩn với BM + PKT<br/>- Quyết định: Làm lại hoàn toàn<br/>- Investigation nếu cần"]
+        
+        P4_L3_Reject --> P4_L3_Escalate["Escalate tới Hiệu trưởng<br/>HT quyết định cuối cùng"]
+        
+        P4_L3_Decision -->|APPROVE| P4_L3_Approve["🎉 PDT PHÊ DUYỆT CHÍNH THỨC:<br/>ACTION:<br/>- Trưởng PDT/PGS ĐT ký số<br/>- Đóng dấu APPROVED FOR EXAM<br/>- Final blockchain log<br/>- Generate exam ID<br/>STATUS: APPROVED & READY<br/>CERTIFICATE:<br/>- Official approval certificate<br/>- Signed by all 3 levels"]
+        
+        P4_L3_Approve --> P4_Lock["🔒 KHÓA ĐỀ THI CHÍNH THỨC:<br/>SECURITY:<br/>- Encrypt AES-256<br/>- Password-protected<br/>- Access log enabled<br/>- Watermark enhanced<br/>STORAGE:<br/>- Primary: Secure cloud<br/>- Backup 1: Local encrypted<br/>- Backup 2: Disaster recovery site<br/>- Backup 3: Offline vault<br/>BLOCKCHAIN:<br/>- Hash tất cả 4 variants<br/>- Immutable log<br/>- Timestamp<br/>- Audit trail<br/>PERMISSION:<br/>- Read: Chỉ PDT + IT Admin<br/>- Write: NOBODY<br/>- Decrypt: Chỉ lúc thi"]
+        
+        P4_Lock --> P4_Notify_Complete["Thông báo hoàn thành duyệt đề:<br/>→ GV: Email congratulation + Certificate<br/>→ BM: Dashboard updated<br/>→ PKT: Archive record<br/>→ PDT: Ready for scheduling<br/>→ CMS: Update progress (nếu public)<br/>CONTENT:<br/>- Đề thi đã được phê duyệt<br/>- Exam ID<br/>- Ngày thi dự kiến<br/>- Next steps"]
+        
+        P4_Notify_Complete --> P4_Archive["Archive đề thi:<br/>LƯU TRỮ:<br/>- Version history<br/>- All comments/reviews<br/>- Approval trail<br/>- Certificates<br/>- Analytics report<br/>RETENTION: 5 năm<br/>ACCESS: Restricted"]
+        
+        P4_Archive --> P4_Exception["⚠️ EDGE CASE: Thay đổi đề sau khi approved<br/>TRIGGER:<br/>- Phát hiện lỗi nghiêm trọng<br/>- Thay đổi quy chế<br/>- Yêu cầu từ Bộ GD&ĐT<br/>- Sự cố bảo mật<br/>PROCESS:<br/>1. GV/BM gửi đơn khẩn cấp<br/>2. Nêu lý do + Evidence<br/>3. PDT xem xét<br/>4. Nếu approve: Unlock emergency<br/>5. Fix trong 24h<br/>6. Re-review cấp tốc (1 ngày/level)<br/>7. Re-approve<br/>REQUIREMENT:<br/>- Phải có approval từ PDT + HT<br/>- Document đầy đủ lý do<br/>- Log mọi thay đổi"]
+    end
+
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% PHASE 5: LẬP LỊCH THI
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    P4_Exception --> P5_Start
+    
+    subgraph P5["PHASE 5: LẬP LỊCH THI"]
+        direction TB
+        
+        P5_Start["PDT bắt đầu lập lịch thi<br/>ACTOR: Phòng Đào tạo<br/>INPUT: Tất cả đề thi đã được approved<br/>TIMING: 10 ngày trước kỳ thi"]
+        
+        P5_Start --> P5_Check_Ready{Kiểm tra<br/>sẵn sàng}
+        
+        P5_Check_Ready -->|Thiếu đề| P5_Missing["⚠️ EDGE CASE: Chưa đủ đề thi<br/>- Một số môn chưa có đề approved<br/>- GV chậm nộp<br/>- Đề bị reject nhiều lần<br/>ACTION:<br/>→ Alert các GV chưa xong<br/>→ Deadline khẩn: 48h<br/>→ Cân nhắc hoãn lịch thi môn đó<br/>→ Thông báo SV nếu phải hoãn"]
+        
+        P5_Check_Ready -->|Đủ đề| P5_Sync_Data["Đồng bộ dữ liệu từ hệ sinh thái:<br/>FROM EDU:<br/>✓ Danh sách môn thi<br/>✓ Danh sách SV đăng ký từng môn<br/>✓ Lịch học hiện tại (tránh conflict)<br/>✓ Danh sách phòng thi available<br/>✓ Sức chứa từng phòng<br/>✓ Thiết bị phòng (PC, máy chiếu, etc)<br/>FROM HRMS:<br/>✓ Danh sách GV làm giám thị<br/>✓ Lịch làm việc GV<br/>✓ Lịch nghỉ phép<br/>FROM OTS:<br/>✓ Đề thi đã approved<br/>✓ Hình thức thi (Online/Offline)<br/>✓ Thời gian thi từng môn"]
+        
+        P5_Sync_Data --> P5_Data_Check{Dữ liệu<br/>đầy đủ?}
+        
+        P5_Data_Check -->|Thiếu| P5_Data_Error["⚠️ EDGE CASE: Dữ liệu không đầy đủ<br/>COMMON ISSUES:<br/>- EDU chưa cập nhật danh sách SV mới<br/>- Phòng thi đang bảo trì chưa update<br/>- HRMS thiếu lịch GV<br/>- SV chuyển lớp chưa sync<br/>SOLUTION:<br/>→ Alert đơn vị liên quan<br/>→ Deadline bổ sung: 24h<br/>→ PDT nhập manual tạm thời"]
+        P5_Data_Error --> P5_Sync_Data
+        
+        P5_Data_Check -->|Đủ| P5_Special["Đánh dấu SV đặc biệt:<br/>LOAD FROM EDU:<br/>1. SV khuyết tật:<br/>   - Cần phòng riêng/tầng 1<br/>   - Cần hỗ trợ thiết bị<br/>   - Thời gian thi +30%<br/>2. SV học 2 trường:<br/>   - Check conflict lịch thi<br/>   - Ưu tiên xếp ca sớm/muộn<br/>3. SV thai sản:<br/>   - Phòng gần y tế<br/>   - Được nghỉ giữa ca<br/>4. SV thi lại/cải thiện:<br/>   - Tách phòng riêng<br/>   - Đề khác với thi chính<br/>5. SV vi phạm lần trước:<br/>   - Tăng cường giám sát<br/>   - Camera riêng<br/>PROCESS:<br/>- Auto-detect từ database<br/>- Verify với Phòng Công tác SV<br/>- Confirm với SV<br/>- Flag trong system"]
+        
+        P5_Special --> P5_Constraint["Định nghĩa constraints cho AI:<br/>HARD CONSTRAINTS (Bắt buộc):<br/>✗ SV không thi 2 môn cùng lúc<br/>✗ Phòng không quá sức chứa<br/>✗ GV không trùng ca giám thị<br/>✗ 1 phòng chỉ 1 môn/ca<br/>✗ Đủ GT theo quy chế (1 GT/30 SV)<br/>✗ Tránh lịch học chính khóa<br/>SOFT CONSTRAINTS (Tối ưu):<br/>~ Phân bổ đều số ca/ngày<br/>~ Tránh SV thi >2 môn/ngày<br/>~ Ưu tiên phòng thi online cho môn online<br/>~ Cân bằng tải GT<br/>~ Tối thiểu di chuyển giữa phòng<br/>~ Ưu tiên phòng lớn cho môn nhiều SV"]
+        
+        P5_Constraint --> P5_AI_Schedule["AI SCHEDULING ENGINE:<br/>ALGORITHM: Constraint Programming + Genetic Algorithm<br/>INPUT:<br/>- 150 môn thi<br/>- 5000 sinh viên<br/>- 80 phòng thi<br/>- 200 giảng viên GT<br/>- 14 ngày thi (2 tuần)<br/>- 4 ca/ngày (Sáng/Chiều/Tối/Weekend)<br/>PROCESS:<br/>1. Parse all constraints<br/>2. Build conflict matrix<br/>3. Initial random assignment<br/>4. Genetic evolution (1000 generations)<br/>5. Local optimization<br/>6. Validate solution<br/>OUTPUT:<br/>- Lịch thi đầy đủ<br/>- Phân công GT<br/>- Sơ đồ phòng<br/>TIME: ~5-10 phút<br/>OPTIMIZATION GOAL:<br/>- Maximize: SV comfort (không thi quá dày)<br/>- Minimize: Conflicts, resource waste"]
+        
+        P5_AI_Schedule --> P5_Check_Conflict{Phát hiện<br/>xung đột?}
+        
+        P5_Check_Conflict -->|Có| P5_Conflict_Detail["⚠️ HIỂN THỊ XUNG ĐỘT:<br/>CATEGORIES:<br/>1. SV conflicts:<br/>   - SV X thi 2 môn cùng ca<br/>   - Số lượng: Y cases<br/>2. Room conflicts:<br/>   - Phòng A không đủ chỗ<br/>   - Phòng B đang bảo trì<br/>3. GT conflicts:<br/>   - GV Z nghỉ phép ngày D<br/>   - Thiếu GT ca chiều thứ 3<br/>4. Facility conflicts:<br/>   - Phòng máy đã đủ slot<br/>   - Thiếu phòng cách âm<br/>DISPLAY:<br/>- Highlight màu đỏ<br/>- Detail popup<br/>- Count: X conflicts"]
+        
+        P5_Conflict_Detail --> P5_Resolve_Method{Giải quyết<br/>thế nào?}
+        
+        P5_Resolve_Method -->|AI Auto| P5_AI_Resolve["AI tự động giải quyết:<br/>STRATEGIES:<br/>1. Dời ca thi conflict<br/>2. Chia nhỏ phòng thi<br/>3. Gộp lớp ít SV<br/>4. Tìm GT thay thế<br/>5. Mở thêm ca cuối tuần<br/>6. Thuê phòng bên ngoài<br/>RE-RUN:<br/>- Algorithm với constraints mới<br/>- Prioritize giải quyết hard conflicts<br/>- Accept some soft conflicts nếu cần"]
+        P5_AI_Resolve --> P5_AI_Schedule
+        
+        P5_Resolve_Method -->|Manual| P5_Manual_Fix["PDT điều chỉnh thủ công:<br/>INTERFACE:<br/>- Drag & drop môn thi<br/>- Chọn phòng/ca khác<br/>- Swap sessions<br/>- Add/remove GT<br/>REALTIME:<br/>- Highlight conflicts khi drag<br/>- Show available slots<br/>- Suggest alternatives<br/>ACTION:<br/>- Click conflict → Show options<br/>- Select fix → Auto update<br/>- Validate → Re-check conflicts"]
+        P5_Manual_Fix --> P5_AI_Schedule
+        
+        P5_Check_Conflict -->|Không có| P5_Preview["Preview lịch thi tổng thể:<br/>VIEW OPTIONS:<br/>1. Calendar view:<br/>   - Grid 14 ngày × 4 ca<br/>   - Color coded by faculty<br/>2. Room view:<br/>   - Từng phòng theo timeline<br/>   - Utilization %<br/>3. Student view:<br/>   - Lịch thi cá nhân từng SV<br/>   - Workload distribution<br/>4. GT view:<br/>   - Lịch giám thị từng GV<br/>   - Số ca assigned<br/>EXPORT:<br/>- Excel: Master schedule<br/>- PDF: Poster print<br/>- iCal: Calendar sync<br/>- CSV: For import to other systems<br/>ANALYTICS:<br/>- Room utilization: 85%<br/>- GT workload: Balanced<br/>- Student max: 3 môn/tuần<br/>- Peak day: Thứ 4"]
+        
+        P5_Preview --> P5_Validate["Validation cuối cùng:<br/>AUTO CHECK:<br/>✓ All môn có lịch thi<br/>✓ All SV có đủ slot<br/>✓ All GT assigned<br/>✓ All phòng within capacity<br/>✓ No hard conflicts<br/>✓ Compliance với quy chế<br/>✓ Timeline trong khoảng cho phép<br/>MANUAL REVIEW:<br/>- PDT xem từng ngày<br/>- Check special cases<br/>- Verify GT qualification"]
+        
+        P5_Validate --> P5_PDT_Approve{PDT<br/>phê duyệt?}
+        
+        P5_PDT_Approve -->|Chưa| P5_Adjust["PDT yêu cầu điều chỉnh:<br/>REASONS:<br/>- Một số ngày quá tải<br/>- Muốn thay đổi thứ tự môn<br/>- GT không phù hợp<br/>- Phòng không tối ưu<br/>ACTION:<br/>→ Note changes<br/>→ Back to manual fix"]
+        P5_Adjust --> P5_Manual_Fix
+        
+        P5_PDT_Approve -->|Duyệt| P5_Lock["🔒 KHÓA LỊCH THI:<br/>ACTION:<br/>- PDT ký duyệt<br/>- Blockchain log<br/>- Timestamp<br/>- Version final<br/>STATUS: LOCKED<br/>PERMISSION:<br/>- Chỉ HT có thể mở khóa khẩn cấp<br/>BACKUP:<br/>- 3 bản lưu trữ"]
+        
+        P5_Lock --> P5_Generate_Sessions["Tạo Exam Sessions chi tiết:<br/>FOR EACH SESSION:<br/>1. Session Info:<br/>   - Session ID: unique<br/>   - Môn học<br/>   - Ngày thi<br/>   - Ca thi: 7-9h/9-11h/13-15h/15-17h<br/>   - Phòng thi<br/>2. Đề thi:<br/>   - Assign variants A/B/C/D random<br/>   - Link đến đề đã encrypt<br/>   - Decryption key (stored separately)<br/>3. Danh sách SV:<br/>   - Họ tên, MSSV<br/>   - Số báo danh<br/>   - Vị trí ngồi (nếu offline)<br/>   - Variant assigned<br/>4. Giám thị:<br/>   - GT chính + GT phụ<br/>   - Số điện thoại liên hệ<br/>   - Checklist nhiệm vụ<br/>5. Phòng thi:<br/>   - Tên phòng, vị trí<br/>   - Số chỗ ngồi<br/>   - Thiết bị có sẵn<br/>   - Yêu cầu đặc biệt<br/>GENERATE:<br/>- QR code cho session<br/>- Barcode số báo danh<br/>- Access code online<br/>TOTAL: ~500 sessions"]
+        
+        P5_Generate_Sessions --> P5_Notify_Prepare["Chuẩn bị thông báo:<br/>CUSTOMIZE BY ROLE:<br/>1. SV:<br/>   - Lịch thi cá nhân<br/>   - Phòng thi, ca thi<br/>   - Số báo danh<br/>   - Quy chế thi<br/>   - Checklist chuẩn bị<br/>2. GV Giám thị:<br/>   - Lịch giám thị<br/>   - Phòng phụ trách<br/>   - Danh sách SV<br/>   - Checklist GT<br/>   - Emergency contacts<br/>3. GV ra đề:<br/>   - Thông tin môn thi<br/>   - Thời gian, địa điểm<br/>   - Số SV dự thi<br/>4. Phòng ban hỗ trợ:<br/>   - IT: Chuẩn bị hệ thống<br/>   - Vật tư: Giấy thi, bút<br/>   - An ninh: Lịch trực<br/>   - Y tế: Sẵn sàng hỗ trợ<br/>FORMAT:<br/>- Email: HTML template<br/>- SMS: Text short<br/>- App: Push notification<br/>- Web: Dashboard<br/>- iCal: Calendar file<br/>- PDF: Download & print"]
+        
+        P5_Notify_Prepare --> P5_Send_Notification["📢 GỬI THÔNG BÁO HÀNG LOẠT:<br/>TIMING:<br/>- T-7 days: Email đầu tiên + iCal<br/>- T-3 days: Reminder email + SMS<br/>- T-1 day: Final reminder + Push<br/>- T-6 hours: Last call SMS<br/>CHANNEL:<br/>→ Email: 100% recipients<br/>→ SMS: SV + GT (cost-effective)<br/>→ App: Push to mobile<br/>→ Dashboard: Always visible<br/>→ CMS: Public announcement<br/>→ Parent portal: Notify phụ huynh<br/>CONTENT INCLUDES:<br/>✓ Lịch thi chi tiết<br/>✓ Sơ đồ phòng thi<br/>✓ Quy chế thi<br/>✓ Vật dụng được phép mang<br/>✓ Quy định giờ giấc<br/>✓ Contacts khẩn cấp<br/>✓ Link tra cứu điểm sau thi<br/>TRACKING:<br/>- Email open rate<br/>- SMS delivery status<br/>- Notification read status<br/>- Download calendar file"]
+        
+        P5_Send_Notification --> P5_Confirmation["Theo dõi xác nhận:<br/>REQUIRE CONFIRMATION:<br/>- GT confirm nhận lịch (72h)<br/>- SV confirm đã đọc quy chế<br/>AUTO REMINDER:<br/>- Nếu chưa confirm sau 24h<br/>- Escalate sau 48h<br/>DASHBOARD:<br/>- % SV đã xem lịch<br/>- % GT đã confirm<br/>- List chưa confirm"]
+        
+        P5_Confirmation --> P5_Changes["⚠️ EDGE CASE: Thay đổi lịch sau khi công bố<br/>TRIGGERS:<br/>- SV đột ngột nhiều (do đăng ký bổ sung)<br/>- Phòng thi hỏng đột xuất<br/>- GT xin nghỉ khẩn cấp<br/>- Sự cố thiên tai/dịch bệnh<br/>- Thay đổi chính sách từ Bộ<br/>PROCESS:<br/>1. Đánh giá mức độ ảnh hưởng<br/>2. Nếu minor: PDT approve<br/>3. Nếu major: Báo cáo HT<br/>4. Re-run scheduling cho phần bị ảnh hưởng<br/>5. Notify ngay lập tức người liên quan<br/>6. Cập nhật lịch mới<br/>7. Re-send notification<br/>8. Log changes<br/>COMMUNICATION:<br/>- Email urgent<br/>- SMS mass<br/>- Announcement on website<br/>- Direct call nếu cần"]
+        
+        P5_Changes --> P5_Reminder["Hệ thống nhắc nhở tự động:<br/>AUTO REMINDERS:<br/>T-7: 'Lịch thi đã ra, hãy xem ngay'<br/>T-3: 'Còn 3 ngày nữa thi, chuẩn bị CCCD'<br/>T-1: 'Ngày mai thi, check phòng thi'<br/>T-6h: 'Sắp tới giờ thi, đến sớm 30 phút'<br/>T+30min: 'GT check attendance'<br/>CUSTOMIZE:<br/>- Khác nhau cho SV/GT<br/>- Theo múi giờ<br/>- Theo preference (email/SMS/app)"]
+    end
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% PHASE 6: THỰC HIỆN THI - GIÁM SÁT - NỘP BÀI
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    P5_Reminder --> P6_Start
+    
+    subgraph P6["PHASE 6: THỰC HIỆN THI"]
+        direction TB
+        
+        P6_Start["NGÀY THI - 2 LUỒNGparallel:<br/>═══════════════════════════════════<br/>LUỒNG A: SINH VIÊN DỰ THI<br/>LUỒNG B: GIÁM THỊ GIÁM SÁT"]
+        
+        P6_Start --> P6_GT_Flow["─────────────────<br/>LUỒNG GIÁM THỊ<br/>─────────────────"]
+        P6_Start --> P6_SV_Flow["─────────────────<br/>LUỒNG SINH VIÊN<br/>─────────────────"]
+        
+        %% ===== GIÁM THỊ FLOW =====
+        P6_GT_Flow --> P6_GT_Login["GT login Dashboard giám thị<br/>ACTOR: Giảng viên được phân công<br/>TIMING: Trước giờ thi 60 phút<br/>AUTH: SSO + Role verification"]
+        
+        P6_GT_Login --> P6_GT_Check{GT có quyền<br/>giám sát?}
+        P6_GT_Check -->|Không| P6_GT_Error["❌ EDGE CASE: Không có quyền<br/>- Chưa được phân công<br/>- Lịch giám thị bị thay đổi<br/>- Role bị revoke<br/>→ Liên hệ PDT khẩn cấp"]
+        
+        P6_GT_Check -->|Có| P6_GT_Checklist["Pre-exam Checklist:<br/>☐ Nhận đề thi (sealed)<br/>☐ Kiểm tra phòng thi<br/>☐ Test thiết bị (PC/projector/camera)<br/>☐ Check internet connection<br/>☐ Nhận biên bản điểm danh<br/>☐ Nhận danh sách SV + ảnh<br/>☐ Check emergency contacts<br/>☐ Test AI proctoring system<br/>☐ Verify decryption key<br/>STATUS: Phải complete 100% trước giờ thi"]
+        
+        P6_GT_Checklist --> P6_GT_Ready{Checklist<br/>hoàn thành?}
+        P6_GT_Ready -->|Chưa| P6_GT_Issue["⚠️ EDGE CASE: Có vấn đề<br/>COMMON:<br/>- Đề thi không mở được<br/>- Camera không hoạt động<br/>- Phòng thi khóa<br/>- Danh sách SV sai<br/>PROCESS:<br/>→ Report ngay cho PDT<br/>→ IT support<br/>→ Backup plan"]
+        P6_GT_Issue --> P6_GT_Checklist
+        
+        P6_GT_Ready -->|Hoàn thành| P6_GT_Open["Mở cửa phòng thi - 30 phút trước<br/>ACTION:<br/>- SV vào phòng từng người<br/>- Kiểm tra CCCD<br/>- Check tên trong danh sách<br/>- Chỉ chỗ ngồi<br/>- Thu điện thoại/tài liệu<br/>- Phát giấy nháp"]
+        
+        P6_GT_Open --> P6_GT_Attendance["Điểm danh:<br/>FOR EACH SV:<br/>- Gọi tên<br/>- Kiểm tra CCCD/Thẻ SV<br/>- So sánh ảnh<br/>- Tick attendance<br/>- Note SV vắng/muộn<br/>BIOMETRIC (nếu có):<br/>- Scan vân tay/khuôn mặt<br/>- Cross-check database"]
+        
+        P6_GT_Attendance --> P6_GT_Briefing["Brief quy chế thi:<br/>ANNOUNCE:<br/>- Thời gian thi: X phút<br/>- Không được phép mang gì<br/>- Quy định vi phạm<br/>- Cách nộp bài<br/>- Emergency procedures<br/>- Q&A từ SV"]
+        
+        P6_GT_Briefing --> P6_GT_Start_Exam["Phát đề + Bắt đầu thi:<br/>OFFLINE:<br/>- Mở niêm phong đề<br/>- Phát đề ngẫu nhiên variants<br/>- Ghi số báo danh lên đề<br/>ONLINE:<br/>- Decrypt đề thi trong system<br/>- SV login + verify<br/>- Auto-assign variant<br/>START TIME: Record timestamp blockchain"]
+        
+        P6_GT_Start_Exam --> P6_GT_Monitor["Giám sát quá trình thi:<br/>REALTIME DASHBOARD:<br/>- Live camera feeds (all seats)<br/>- AI proctoring alerts<br/>- SV progress (% hoàn thành)<br/>- Time remaining<br/>- Violations log<br/>- System health<br/>PATROL:<br/>- Đi kiểm tra định kỳ<br/>- Check SV làm bài<br/>- Note hành vi khả nghi"]
+        
+        P6_GT_Monitor --> P6_GT_Alert{Nhận cảnh báo<br/>từ AI?}
+        
+        P6_GT_Alert -->|Có| P6_GT_Investigate["Điều tra vi phạm:<br/>AI ALERTS:<br/>- SV X nhìn trái phải nhiều lần<br/>- SV Y dùng điện thoại<br/>- SV Z có người khác trong frame<br/>- SV W tab switching<br/>GT ACTION:<br/>1. Xem lại video evidence<br/>2. Đến chỗ SV kiểm tra<br/>3. Quyết định mức độ vi phạm<br/>OPTIONS:<br/>a) False alarm → Dismiss<br/>b) Warning → Log + Continue<br/>c) Serious → Confiscate + Report<br/>d) Critical → Stop exam + Security"]
+        
+        P6_GT_Investigate --> P6_GT_Violation{Vi phạm<br/>nghiêm trọng?}
+        
+        P6_GT_Violation -->|Nghiêm trọng| P6_GT_Stop["Dừng thi SV:<br/>ACTION:<br/>- Thu bài thi ngay<br/>- Lock account online<br/>- Record evidence:<br/>  + Video clip<br/>  + Screenshots<br/>  + Photos<br/>  + Witness statements<br/>- Lập biên bản vi phạm:<br/>  + Thời gian<br/>  + Hành vi<br/>  + Chứng cứ<br/>  + Chữ ký SV (nếu đồng ý)<br/>- Escort SV ra khỏi phòng<br/>- Notify PDT + An ninh<br/>CONSEQUENCE:<br/>- Điểm thi = 0<br/>- Kỷ luật theo quy chế<br/>- Có thể đình chỉ học"]
+        
+        P6_GT_Violation -->|Nhẹ| P6_GT_Warning["Cảnh cáo:<br/>- Nhắc nhở SV<br/>- Log violation<br/>- Continue exam<br/>- Monitor closer"]
+        P6_GT_Warning --> P6_GT_Monitor
+        
+        P6_GT_Alert -->|Không| P6_GT_Time{Hết giờ<br/>thi?}
+        
+        P6_GT_Time -->|Chưa| P6_GT_Support["⚠️ EDGE CASE: Sự cố kỹ thuật<br/>COMMON ISSUES:<br/>- Mất điện đột xuất<br/>- Internet down<br/>- Máy tính SV crash<br/>- Hệ thống OTS lỗi<br/>- SV ốm đột xuất<br/>PROCESS:<br/>1. GT assess situation<br/>2. Call IT support<br/>3. Document incident<br/>4. Apply contingency:<br/>   - Switch to backup system<br/>   - Extend time nếu cần<br/>   - Move to paper-based<br/>   - Postpone exam<br/>5. Report to PDT<br/>6. Log everything"]
+        P6_GT_Support --> P6_GT_Monitor
+        
+        P6_GT_Time -->|Hết| P6_GT_Collect["Thu bài:<br/>OFFLINE:<br/>- Gọi SV nộp bài lần lượt<br/>- Kiểm tra SV đã ghi đủ thông tin<br/>- Đếm số bài (phải = số SV thi)<br/>- Xếp bài theo thứ tự<br/>ONLINE:<br/>- System auto-submit khi hết giờ<br/>- Force submit SV chưa nộp<br/>- Verify all submissions saved<br/>LATE SUBMISSION:<br/>- Accept nếu muộn <2 phút<br/>- Reject nếu muộn >2 phút<br/>- Log timestamp chính xác"]
+        
+        P6_GT_Collect --> P6_GT_Count["Kiểm đếm bài thi:<br/>CHECK:<br/>- Số bài thu = Số SV có mặt<br/>- Mỗi bài có đầy đủ thông tin<br/>- Không bài nào bị rách/hỏng<br/>- Online: All files uploaded OK<br/>DISCREPANCY:<br/>- Nếu thiếu bài: Investigate<br/>- Nếu thừa bài: Red flag<br/>- Document carefully"]
+        
+        P6_GT_Count --> P6_GT_Seal["Niêm phong bài thi (offline):<br/>- Cho bài vào túi niêm phong<br/>- Dán seal<br/>- Ký tên GT lên seal<br/>- Ghi số lượng bài<br/>- Timestamp<br/>ONLINE:<br/>- System auto-seal submissions<br/>- Generate seal hash<br/>- Blockchain log"]
+        
+        P6_GT_Seal --> P6_GT_Report["Lập biên bản thi:<br/>REQUIRED FIELDS:<br/>✓ Thông tin ca thi<br/>✓ Số SV đăng ký: X<br/>✓ Số SV có mặt: Y<br/>✓ Số SV vắng: Z<br/>✓ Số SV vi phạm: W<br/>✓ Sự cố (nếu có)<br/>✓ Ghi chú GT<br/>✓ Chữ ký GT chính<br/>✓ Chữ ký GT phụ<br/>✓ Timestamp<br/>ATTACH:<br/>- Biên bản vi phạm (nếu có)<br/>- Evidence files<br/>- Incident reports<br/>- Photos"]
+        
+        P6_GT_Report --> P6_GT_Submit["Submit biên bản:<br/>UPLOAD:<br/>- PDF biên bản có chữ ký<br/>- Scanned docs<br/>- Evidence files<br/>- Upload lên OTS<br/>BLOCKCHAIN:<br/>- Hash biên bản<br/>- Immutable log<br/>- Timestamp<br/>STATUS: Session Complete<br/>NOTIFY:<br/>→ PDT: Session report<br/>→ GV ra đề: Exam done<br/>→ PKT: For audit"]
+        
+        %% ===== SINH VIÊN FLOW =====
+        P6_SV_Flow --> P6_SV_Prepare["SV chuẩn bị dự thi:<br/>CHECKLIST:<br/>☐ CCCD/Thẻ SV<br/>☐ Bút viết<br/>☐ Đồng hồ (không smartwatch)<br/>☐ Nước uống (nếu cho phép)<br/>☐ Đã ăn sáng/trưa<br/>☐ Đến phòng thi sớm 30 phút<br/>☐ Tắt điện thoại<br/>☐ Review quy chế thi"]
+        
+        P6_SV_Prepare --> P6_SV_Checkin["Check-in tại phòng thi:<br/>OFFLINE:<n/>- Xuất trình CCCD cho GT<br/>- GT kiểm tra danh sách<br/>- Nhận số báo danh<br/>- Vào chỗ ngồi<br/>- Nộp điện thoại<br/>ONLINE:<br/>- Login hệ thống OTS<br/>- Verify identity<br/>- Join exam session<br/>- Wait in lobby"]
+        
+        P6_SV_Checkin --> P6_SV_Late{SV đến<br/>đúng giờ?}
+        
+        P6_SV_Late -->|Muộn| P6_SV_Late_Handle["⚠️ EDGE CASE: SV đến muộn<br/>RULES:<br/>- Muộn <15 phút: Cho vào thi<br/>  + Không bù thời gian<br/>  + Log muộn<br/>- Muộn 15-30 phút: GT quyết định<br/>  + Xem lý do<br/>  + Có thể cho vào<br/>- Muộn >30 phút: Không cho vào<br/>  + Tính vắng thi<br/>  + Điểm = 0<br/>ACTION:<br/>→ Log timestamp chính xác<br/>→ SV ký nhận<br/>→ Báo PDT"]
+        
+        P6_SV_Late -->|Đúng giờ| P6_SV_Verify
+        P6_SV_Late_Handle --> P6_SV_Verify
+        
+        P6_SV_Verify["Xác thực SV:<br/>OFFLINE:<br/>- GT so sánh ảnh CCCD với ảnh SV<br/>- Check tên trong danh sách<br/>- Visual verification<br/>ONLINE:<br/>- SSO Authentication<br/>- AI Face Recognition:<br/>  + Capture live photo<br/>  + Compare với ảnh trong DB<br/>  + Similarity score >95%<br/>- Liveness detection (chống ảnh/video giả)"]
+        
+        P6_SV_Verify --> P6_SV_Face{Face<br/>recognition<br/>pass?}
+        
+        P6_SV_Face -->|Fail| P6_SV_Manual["⚠️ EDGE CASE: AI không nhận diện được<br/>LÝ DO:<br/>- SV thay đổi ngoại hình nhiều<br/>- Ảnh DB chất lượng kém<br/>- Lighting không tốt<br/>- Wearing mask/glasses<br/>FALLBACK:<br/>→ GT kiểm tra CCCD thủ công<br/>→ So sánh trực tiếp<br/>→ Gọi điện xác minh (nếu nghi ngờ)<br/>→ Override manual approval<br/>→ Log case for review"]
+        
+        P6_SV_Face -->|Pass| P6_SV_Start
+        P6_SV_Manual --> P6_SV_Manual_Check{GT xác nhận<br/>đúng SV?}
+        P6_SV_Manual_Check -->|Không| P6_SV_Block["❌ CHẶN - Không cho thi:<br/>- Nghi ngờ gian lận (người khác thay thi)<br/>- CCCD giả<br/>- Không phải SV của lớp<br/>ACTION:<br/>→ Không cho vào thi<br/>→ Báo an ninh<br/>→ Document evidence<br/>→ Report PDT + HT<br/>→ Investigation"]
+        P6_SV_Manual_Check -->|Đúng| P6_SV_Start
+        
+        P6_SV_Start["Bắt đầu làm bài thi:<br/>OFFLINE:<br/>- Nhận đề thi (variant random)<br/>- Nhận giấy trả lời<br/>- Ghi thông tin: Họ tên, MSSV, Số báo danh<br/>- Bắt đầu làm bài<br/>ONLINE:<br/>- System decrypt đề thi<br/>- Hiển thị đề trên màn hình<br/>- Start timer countdown<br/>- Auto-save enabled<br/>DISPLAY:<br/>- Câu hỏi từng câu hoặc toàn bộ<br/>- Navigation: Next/Previous<br/>- Mark for review<br/>- Timer luôn hiển thị<br/>- Progress bar"]
+        
+        P6_SV_Start --> P6_SV_Exam["Làm bài thi:<br/>INTERACTION:<br/>- Chọn đáp án A/B/C/D<br/>- Thay đổi đáp án được<br/>- Skip câu khó, làm sau<br/>- Review câu đã làm<br/>AUTO-SAVE:<br/>- Mỗi 30 giây<br/>- Mỗi khi chuyển câu<br/>- Trước khi submit<br/>FEATURES:<br/>- Calculator (nếu cho phép)<br/>- Zoom in/out<br/>- Font size adjust<br/>- Highlight text<br/>WARNING:<br/>- Còn X phút<br/>- Còn X câu chưa làm"]
+        
+        P6_SV_Exam --> P6_SV_Proctor["AI Proctoring giám sát:<br/>CAMERA MONITORING:<br/>✓ Face trong frame luôn<br/>✓ Eyes nhìn màn hình<br/>✓ Không có người khác<br/>✓ Không dùng điện thoại<br/>✓ Môi không động (không nói)<br/>✓ Tay trên bàn (không cầm gì lạ)<br/>SYSTEM MONITORING:<br/>✓ Không tab switching<br/>✓ Không copy/paste<br/>✓ Không screenshot<br/>✓ Không screen sharing<br/>✓ Không external monitor<br/>AUDIO MONITORING:<br/>✓ Phát hiện giọng nói<br/>✓ Background noise<br/>VIOLATIONS:<br/>- Cumulative score<br/>- Auto flag nếu >threshold"]
+        
+        P6_SV_Proctor --> P6_SV_Violation{Phát hiện<br/>vi phạm?}
+        
+        P6_SV_Violation -->|Nhẹ| P6_SV_Warn["Cảnh báo trên màn hình:<br/>⚠️ WARNING<br/>- Hãy nhìn vào màn hình<br/>- Giữ mặt trong khung hình<br/>- Không được tắt camera<br/>- Đây là cảnh báo lần X/3<br/>COUNT: Log số lần cảnh báo<br/>→ Nếu >3 lần: Escalate"]
+        P6_SV_Warn --> P6_SV_Exam
+        
+        P6_SV_Violation -->|Nghiêm trọng| P6_SV_Lock["🔒 KHÓA BÀI THI:<br/>TRIGGERS:<br/>- Dùng điện thoại<br/>- Có người khác giúp<br/>- Tab switching nhiều lần<br/>- Screenshot<br/>- Mất camera >30 giây<br/>ACTION:<br/>- Lock exam immediately<br/>- Capture evidence:<br/>  + Video 30s trước vi phạm<br/>  + Screenshot<br/>  + Audio<br/>  + System logs<br/>- Notify GT real-time<br/>- Display: 'Bài thi bị khóa do vi phạm'<br/>- Cannot resume<br/>- Score = 0"]
+        
+        P6_SV_Violation -->|Không| P6_SV_Time{Hết giờ<br/>hoặc nộp bài?}
+        
+        P6_SV_Time -->|Làm tiếp| P6_SV_Issue["⚠️ EDGE CASE: Sự cố của SV<br/>TECHNICAL:<br/>- Internet disconnect<br/>- Computer crash<br/>- Browser freeze<br/>- Power outage<br/>- OTS server down<br/>PERSONAL:<br/>- Ốm đột xuất<br/>- Emergency<br/>PROCESS:<br/>1. SV báo GT ngay<br/>2. GT document incident<br/>3. IT support (if technical)<br/>4. Quyết định:<br/>   a) Extend time<br/>   b) Switch device/room<br/>   c) Postpone exam<br/>5. Log everything"]
+        P6_SV_Issue --> P6_SV_Exam
+        
+        P6_SV_Time -->|Nộp bài| P6_SV_Submit["SV nộp bài:<br/>OFFLINE:<br/>- SV giơ tay báo GT<br/>- Nộp giấy thi + giấy nháp<br/>- GT kiểm tra thông tin đầy đủ<br/>- SV rời phòng<br/>ONLINE:<br/>- Click button 'Nộp bài'<br/>- Confirm dialog: 'Bạn chắc chắn?'<br/>- Show: X/Y câu đã làm<br/>- Confirm → Submit<br/>AUTO-SUBMIT:<br/>- Khi hết giờ tự động nộp<br/>- Không cần confirm"]
+        
+        P6_SV_Submit --> P6_SV_Encrypt["Mã hóa & lưu bài thi:<br/>PROCESS:<br/>1. Validate tất cả đáp án đã save<br/>2. Generate submission hash<br/>3. Encrypt bài thi<br/>4. Upload lên cloud:<br/>   - Primary server<br/>   - Backup server 1<br/>   - Backup server 2<br/>5. Blockchain log:<br/>   - Hash bài thi<br/>   - Timestamp nộp<br/>   - MSSV<br/>   - Session ID<br/>   - Immutable record<br/>6. Generate receipt<br/>STORAGE:<br/>- Retention: 5 năm<br/>- Access: Restricted<br/>- Audit trail: Full"]
+        
+        P6_SV_Encrypt --> P6_SV_Confirm["Xác nhận nộp bài:<br/>DISPLAY:<br/>✅ Bài thi đã nộp thành công<br/>- Submission ID: #XXXXX<br/>- Timestamp: DD/MM/YYYY HH:MM:SS<br/>- Số câu đã làm: X/Y<br/>- Điểm dự kiến công bố: DD/MM<br/>- Download receipt (PDF)<br/>INSTRUCTION:<br/>- Thoát khỏi phòng thi<br/>- Chờ kết quả<br/>- Link tra điểm sau này"]
+        
+        P6_SV_Confirm --> P6_End_Session
+        P6_GT_Submit --> P6_End_Session
+        P6_GT_Stop --> P6_End_Session
+        P6_SV_Lock --> P6_End_Session
+        
+        P6_End_Session["🏁 KẾT THÚC CA THI:<br/>FINAL ACTIONS:<br/>✓ Tất cả bài thi đã thu<br/>✓ Biên bản đã hoàn thành<br/>✓ Evidence đã upload<br/>✓ Phòng thi đã dọn dẹp<br/>✓ GT đã sign off<br/>✓ System logs saved<br/>STATUS:<br/>- Session: COMPLETED<br/>- Ready for grading<br/>NOTIFICATION:<br/>→ GV ra đề: Exam done, ready to grade<br/>→ PDT: Session report<br/>→ PKT: Audit log<br/>→ IT: Backup completed<br/>NEXT: Phase 7 - Chấm điểm"]
+    end
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% PHASE 7-10: CHẤM ĐIỂM - PHÚC KHẢO - PHÂN TÍCH - THI LẠI
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    P6_End_Session --> P7_Start
+    
+    subgraph P7["PHASE 7: CHẤM ĐIỂM - 4 CẤP DUYỆT"]
+        P7_Start["AI tự động chấm điểm MCQ sau thi 30 phút"] --> P7_Sync["Đồng bộ điểm → EDU/LMS → Notify SV"] --> P7_GV["GV review + duyệt"] --> P7_BM["BM spot-check 20%"] --> P7_PKT["PKT sample 10%"] --> P7_PDT["PDT phê duyệt cuối"] --> P7_Lock["🔒 Khóa điểm chính thức"]
+    end
+    
+    P7_Lock --> P8_Start
+    
+    subgraph P8["PHASE 8: PHÚC KHẢO & KHIẾU NẠI"]
+        P8_Start["SV xem điểm công bố"] --> P8_Check{Hài lòng?} -->|Không| P8_Appeal["SV gửi đơn phúc khảo trong 7 ngày"] --> P8_GV["GV xem xét & chấm lại"] --> P8_BM["BM quyết định cuối"] --> P8_Update["Cập nhật điểm mới (nếu chấp nhận)"]
+        P8_Check -->|Có| P8_Done
+    end
+    
+    P7_Lock --> P9_Start
+    
+    subgraph P9["PHASE 9: PHÂN TÍCH CHẤT LƯỢNG & AUN-QA"]
+        P9_Start["ĐBCL thu thập data toàn bộ kỳ thi"] --> P9_AI["AI phân tích:<br/>- Item analysis<br/>- CLO/PLO attainment<br/>- Trend analysis<br/>- Benchmark"] --> P9_Report["Tạo báo cáo AUN-QA/ABET format"] --> P9_Action["Action plan cải tiến (nếu có gaps)"] --> P9_Export["Export sang CMS/EDU/HRM"]
+    end
+    
+    P9_Export --> P10_Start
+    
+    subgraph P10["PHASE 10: THI LẠI"]
+        P10_Start["PDT lập danh sách SV thi lại"] --> P10_Check{Đủ điều kiện?} -->|Không| P10_Block["Block: Vi phạm/Nợ phí/Rớt >3 môn"]
+        P10_Check -->|Đủ| P10_Register["SV đăng ký thi lại + Nộp phí"] --> P10_Schedule["Quay lại Phase 5: Lập lịch thi lại"] -.->|Loop| P5_Start
+    end
+    
+    P8_Update --> P8_Done
+    P8_Done([KẾT THÚC CHU KỲ KHẢO THÍ])
+
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    %% STYLING & LEGEND
+    %% ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    classDef ai fill:#FFF3E0,stroke:#FF6F00,stroke-width:3px,color:#000
+    classDef lock fill:#FFEBEE,stroke:#C62828,stroke-width:4px,color:#000
+    classDef approve fill:#E8F5E9,stroke:#2E7D32,stroke-width:3px,color:#000
+    classDef phase fill:#F3E5F5,stroke:#6A1B9A,stroke-width:3px,color:#000
+    classDef error fill:#FFEBEE,stroke:#D32F2F,stroke-width:2px,color:#000
+    classDef warning fill:#FFF9C4,stroke:#F57C00,stroke-width:2px,color:#000
+    classDef sync fill:#E3F2FD,stroke:#1976D2,stroke-width:2px,color:#000
+    
+    %% AI Components
+    class P0_AI_Check,P1_AI_Match,P2_AI_Generate,P2_Manual_Validate,P3_Matrix_Validate,P3_AI_Select,P3_QC,P4_L1_AI_Support,P4_L2_AI_Check,P5_AI_Schedule,P6_SV_Proctor,P7_Start,P8_Start,P9_AI ai
+    
+    %% Lock/Security
+    class P0_Lock,P1_Lock,P2_Final_Save,P3_Submit,P4_Lock,P5_Lock,P6_SV_Encrypt,P7_Lock lock
+    
+    %% Approvals
+    class P0_Standards,P1_Assign,P2_BM_Approve,P3_Satisfied,P4_L1_Approve,P4_L2_Approve,P4_L3_Approve,P5_PDT_Approve,P7_PDT approve
+    
+    %% Phases
+    class P0,P1,P2,P3,P4,P5,P6,P7,P8,P9,P10 phase
+    
+    %% Errors & Edge Cases
+    class P0_Error,P1_Missing,P2_403,P2_Validate_Error,P3_No_QB,P4_L3_Reject,P5_Missing,P5_Data_Error,P6_GT_Error,P6_SV_Block error
+    
+    %% Warnings
+    class P0_Resolve,P1_Resolve_Conflict,P2_Late_Warning,P3_Late,P4_L1_Late_Warning,P5_Conflict_Detail,P6_SV_Warn,P6_SV_Late_Handle warning
+    
+    %% Sync/Integration
+    class P0_Init,P0_Sync_HRM,P0_Sync_Facilities,P1_Load_Data,P5_Sync_Data,P7_Sync sync
